@@ -2,215 +2,314 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cinematic Text-to-Video Studio</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Outfit:wght@300;500;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DocScan Pro | Premium Document Scanner & PDF Converter</title>
+    <meta name="description" content="Professional document scanning and PDF conversion in your browser. Real-time edge detection, smart cropping, and text enhancement.">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src='https://unpkg.com/tesseract.js@v5.1.0/dist/tesseract.min.js'></script>
+    <script async src="https://docs.opencv.org/4.x/opencv.js" onload="onOpenCvReady();" type="text/javascript"></script>
+    
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
-<body>
-    <!-- App Background can be customized by the user -->
-    <div id="app-background" class="app-background"></div>
-
+<body class="mobile-first">
     <div class="app-container">
-        
-        <!-- Left Sidebar: Customization Panel -->
-        <aside class="sidebar glass-panel" style="width: 420px;">
-            <header class="sidebar-header">
-                <h2><i class="fa-solid fa-film"></i> T2V Studio PRO</h2>
-                <p>Create vertical cinematic MP4s with Video & Audio</p>
-                
-                <div class="tabs-container" style="display:flex; margin-top: 15px; border-radius: 8px; background: rgba(0,0,0,0.3); overflow: hidden;">
-                    <button class="style-btn tab-btn active" data-target="tab-text" style="padding: 10px; font-weight: bold;">Text & Styles</button>
-                    <button class="style-btn tab-btn" data-target="tab-video" style="padding: 10px; font-weight: bold;">Clips & Audio</button>
+        <!-- Background Elements -->
+        <div class="glow-blob blob-tl"></div>
+        <div class="glow-blob blob-br"></div>
+
+        <!-- View 1: Welcome / Permissions -->
+        <section id="view-welcome" class="app-view active">
+            <div class="welcome-content glass">
+                <div class="app-logo">
+                    <div class="logo-icon">
+                        <i data-lucide="scan-line"></i>
+                    </div>
+                    <h1>DocScan<span>Pro</span></h1>
                 </div>
+                <p>Scan documents with precision. Experience professional-grade edge detection and PDF conversion instantly.</p>
+                
+                <div class="permission-card">
+                    <i data-lucide="camera"></i>
+                    <h3>Camera Permission</h3>
+                    <p>We need access to your camera to scan documents directly from your device.</p>
+                    <button id="btn-request-permission" class="primary-btn pulse">
+                        <i data-lucide="shield-check"></i>
+                        Allow Camera Access
+                    </button>
+                    <div id="permission-denied" class="error-msg hidden">
+                        <p>Camera access was denied. Please enable it in your browser settings to continue.</p>
+                    </div>
+                </div>
+
+                <div class="gallery-option">
+                    <p>Or start by importing from your gallery</p>
+                    <button id="btn-import-gallery-initial" class="secondary-btn">
+                        <i data-lucide="image"></i>
+                        Import Images
+                    </button>
+                    <input type="file" id="file-input-initial" multiple accept="image/*" class="hidden">
+                </div>
+            </div>
+        </section>
+
+        <!-- View 2: Camera / Scanner Interface -->
+        <section id="view-scanner" class="app-view">
+            <div class="camera-container">
+                <video id="camera-preview" autoplay playsinline></video>
+                <canvas id="detection-overlay"></canvas>
+                
+                <!-- Scanner UI Overlays -->
+                <div class="scanner-header">
+                    <button class="icon-btn close-scanner" title="Cancel">
+                        <i data-lucide="x"></i>
+                    </button>
+                    <div class="scanner-mode">Document Mode</div>
+                    <button id="toggle-flash" class="icon-btn" title="Flash">
+                        <i data-lucide="zap"></i>
+                    </button>
+                </div>
+
+                <div class="scanner-guides">
+                    <div class="guide-frame"></div>
+                    <div class="detection-status" id="scan-status">Searching for document...</div>
+                </div>
+
+                <div class="scanner-controls">
+                    <button id="btn-open-gallery" class="icon-btn" title="Gallery">
+                        <i data-lucide="image"></i>
+                    </button>
+                    <div class="shutter-btn-outer">
+                        <button id="shutter-btn" class="shutter-btn" title="Capture"></button>
+                    </div>
+                    <button id="btn-view-list" class="icon-btn badge-btn" title="Batch View">
+                        <i data-lucide="layers"></i>
+                        <span id="page-count-badge" class="badge">0</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- View 3: Document Editor (Crop & Filters) -->
+        <section id="view-editor" class="app-view">
+            <header class="view-header glass">
+                <button class="icon-btn" id="btn-cancel-edit">
+                    <i data-lucide="chevron-left"></i>
+                </button>
+                <h2>Edit Scan</h2>
+                <button class="text-btn" id="btn-save-page">Done</button>
             </header>
 
-            <div class="controls-wrapper">
+            <div class="editor-workspace">
+                <div id="crop-container" class="crop-container">
+                    <canvas id="editor-canvas"></canvas>
+                    <div id="crop-handles"></div>
+                </div>
                 
-                <!-- TAB 1: TEXT STUDIO -->
-                <div id="tab-text" class="tab-content">
-                    <section class="control-group">
-                        <h3><i class="fa-solid fa-keyboard"></i> Text Content (6-7 Lines max)</h3>
-                        <textarea id="text-input" rows="5" placeholder="Enter text here..."></textarea>
-                        <button class="btn btn-primary" id="update-text-btn"><i class="fa-solid fa-sync"></i> Refresh Text</button>
-                    </section>
+                <div class="editor-tools glass">
+                    <div class="tool-tabs">
+                        <button class="tool-tab active" data-tab="crop"><i data-lucide="crop"></i>Crop</button>
+                        <button class="tool-tab" data-tab="filters"><i data-lucide="wand-2"></i>Filters</button>
+                        <button class="tool-tab" data-tab="adjust"><i data-lucide="sliders"></i>Adjust</button>
+                    </div>
 
-                    <section class="control-group" id="styling-panel" class="disabled-panel">
-                        <h3><i class="fa-solid fa-palette"></i> Text Styling</h3>
-                        
-                        <div class="style-row">
-                            <select id="font-family" class="input-field styled-select" style="flex: 2;">
-                                <option value="'Inter', sans-serif">Inter</option>
-                                <option value="'Outfit', sans-serif">Outfit</option>
-                                <option value="'Playfair Display', serif">Playfair Display</option>
-                            </select>
-                            <label class="btn btn-secondary file-upload-btn" title="Upload Custom Font" style="flex: 1; padding: 0.6rem;">
-                                <i class="fa-solid fa-file-arrow-up"></i>
-                                <input type="file" id="custom-font-upload" accept=".ttf,.otf,.woff,.woff2" hidden>
-                            </label>
-                        </div>
-                        
-                        <div class="style-row">
-                            <select id="text-effect" class="input-field styled-select">
-                                <option value="none">No Effect</option>
-                                <option value="glow">Neon Glow</option>
-                                <option value="shadow">Drop Shadow</option>
-                                <option value="outline">Text Outline</option>
-                                <option value="blur">Motion Blur</option>
-                                <option value="glitch">Glitch Effect</option>
-                                <option value="3d">3D Pop</option>
-                            </select>
-                        </div>
-
-                        <div class="style-row">
-                            <div class="slider-group">
-                                <label>Size (<span id="size-val">30</span>px)</label>
-                                <input type="range" id="font-size" min="10" max="150" value="30">
+                    <div class="tool-content">
+                        <!-- Crop Tab -->
+                        <div id="tab-crop" class="tab-pane active">
+                            <div class="crop-actions">
+                                <button id="btn-rotate" class="icon-btn-text"><i data-lucide="rotate-cw"></i> Rotate</button>
+                                <button id="btn-reset-crop" class="icon-btn-text"><i data-lucide="refresh-ccw"></i> Reset</button>
+                                <button id="btn-auto-crop" class="icon-btn-text active"><i data-lucide="sparkles"></i> Auto</button>
                             </div>
                         </div>
 
-                        <div class="style-row flex-spaced">
-                            <div class="color-picker-group">
-                                <label>Text</label>
-                                <input type="color" id="text-color" value="#ffffff">
-                            </div>
-                            <div class="color-picker-group">
-                                <label>Background</label>
-                                <input type="color" id="text-bg-color" value="#000000">
-                            </div>
-                        </div>
-
-                        <div class="style-row toggle-group">
-                            <button class="style-btn" id="btn-bold" title="Bold"><i class="fa-solid fa-bold"></i></button>
-                            <button class="style-btn" id="btn-italic" title="Italic"><i class="fa-solid fa-italic"></i></button>
-                            <button class="style-btn" id="btn-underline" title="Underline"><i class="fa-solid fa-underline"></i></button>
-                        </div>
-                    </section>
-                </div>
-
-                <!-- TAB 2: VIDEO, AUDIO & SCENES -->
-                <div id="tab-video" class="tab-content" style="display: none;">
-                    
-                    <!-- Scene Background & Gradient Customizer -->
-                    <section class="control-group">
-                        <h3><i class="fa-solid fa-image"></i> Scene Background</h3>
-                        <div class="style-row">
-                            <select id="video-bg-type" class="input-field styled-select">
-                                <option value="color">Solid Background</option>
-                                <option value="gradient">Custom Gradient</option>
-                                <option value="image">Image / Video Background</option>
-                            </select>
-                        </div>
-                        
-                        <div class="style-row" id="video-color-options">
-                            <input type="color" id="video-bg-color" value="#1a1a2e" title="Solid Color">
-                        </div>
-
-                        <!-- Gradient Editor -->
-                        <div id="gradient-options" style="display:none; flex-direction:column; gap:0.5rem; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px;">
-                            <div class="flex-row">
-                                <input type="color" id="grad-color-1" value="#ff0080">
-                                <input type="color" id="grad-color-2" value="#7928ca">
-                            </div>
-                            <div class="slider-group">
-                                <label>Angle (<span id="grad-angle-val">135</span>&deg;)</label>
-                                <input type="range" id="grad-angle" min="0" max="360" value="135">
-                            </div>
-                        </div>
-
-                        <!-- Video/Image BG Upload -->
-                        <div id="video-img-options" style="display:none; margin-top:0.5rem;">
-                            <label class="btn btn-secondary file-upload-btn">
-                                <i class="fa-solid fa-upload"></i> Upload Image / Video
-                                <input type="file" id="video-bg-image" accept="image/*, video/*" hidden>
-                            </label>
-                            <!-- Cropping / Trimming for Video -->
-                            <div id="video-trim-options" style="display:none; flex-direction: column; gap: 0.5rem; margin-top: 1rem;">
-                                <p style="font-size: 0.8rem; color: var(--text-muted);"><i class="fa-solid fa-scissors"></i> Crop / Trim Uploaded Video</p>
-                                <div class="flex-row" style="font-size: 0.85rem;">
-                                    <label>Start (s): <input type="number" id="vid-start" value="0" min="0" step="0.5" class="input-field" style="width: 60px; padding: 0.3rem;"></label>
-                                    <label>End (s): <input type="number" id="vid-end" value="5" min="0.5" step="0.5" class="input-field" style="width: 60px; padding: 0.3rem;"></label>
+                        <!-- Filters Tab -->
+                        <div id="tab-filters" class="tab-pane">
+                            <div class="filter-scroll">
+                                <div class="filter-option active" data-filter="original">
+                                    <div class="filter-preview original"></div>
+                                    <span>Original</span>
                                 </div>
-                                <p style="font-size: 0.75rem; color: var(--accent);">Note: Video is automatically cropped to 6:18 HD ratio.</p>
+                                <div class="filter-option" data-filter="magic">
+                                    <div class="filter-preview magic"></div>
+                                    <span>Magic</span>
+                                </div>
+                                <div class="filter-option" data-filter="bw">
+                                    <div class="filter-preview bw"></div>
+                                    <span>B&W</span>
+                                </div>
+                                <div class="filter-option" data-filter="enhance">
+                                    <div class="filter-preview enhance"></div>
+                                    <span>Eco</span>
+                                </div>
                             </div>
                         </div>
-                    </section>
-                    
-                    <!-- Audio Track -->
-                    <section class="control-group">
-                        <h3><i class="fa-solid fa-music"></i> Audio Track</h3>
-                        <label class="btn btn-secondary file-upload-btn">
-                            <i class="fa-solid fa-file-audio"></i> Upload Audio (.mp3, .wav)
-                            <input type="file" id="audio-upload" accept="audio/*" hidden>
-                        </label>
-                        <p id="audio-file-name" style="font-size: 0.8rem; color: var(--accent); margin-top: 0.3rem; display: none;">Track Loaded: <span></span></p>
-                    </section>
 
-                    <section class="control-group">
-                        <h3><i class="fa-solid fa-film"></i> Rendering Settings</h3>
-                        <div class="style-row">
-                            <select id="animation-preset" class="input-field styled-select">
-                                <option value="cinematic">Cinematic Mix</option>
-                                <option value="minimal">Minimal (Fade)</option>
-                                <option value="typewriter">Typewriter</option>
-                                <option value="bounce">Bouncy</option>
-                            </select>
+                        <!-- Adjust Tab -->
+                        <div id="tab-adjust" class="tab-pane">
+                            <div class="adjust-list">
+                                <div class="adjust-item">
+                                    <label>Brightness</label>
+                                    <input type="range" id="adj-brightness" min="0" max="200" value="100">
+                                </div>
+                                <div class="adjust-item">
+                                    <label>Contrast</label>
+                                    <input type="range" id="adj-contrast" min="0" max="200" value="100">
+                                </div>
+                                <div class="adjust-item">
+                                    <label>Sharpness</label>
+                                    <input type="range" id="adj-sharpness" min="0" max="100" value="0">
+                                </div>
+                            </div>
                         </div>
-                        <div class="style-row">
-                            <label class="checkbox-label">
-                                <input type="checkbox" id="auto-ratio"> Auto-mix sequences
-                            </label>
-                        </div>
-                    </section>
-
+                    </div>
                 </div>
+            </div>
+        </section>
 
-                <!-- Global generate button stays outside tabs -->
-                <button class="btn btn-accent pulse" id="generate-video-btn" style="margin-top: 1rem;">
-                    <i class="fa-solid fa-video"></i> Render HD Video
+        <!-- View 4: Document List (Batch View & Reorder) -->
+        <section id="view-list" class="app-view">
+            <header class="view-header glass">
+                <button class="icon-btn" id="btn-back-to-scanner">
+                    <i data-lucide="camera"></i>
+                </button>
+                <h2>My Document</h2>
+                <button class="primary-btn btn-sm" id="btn-prepare-pdf">Create PDF</button>
+            </header>
+
+            <div class="batch-scroller">
+                <div id="document-pages" class="pages-grid">
+                    <!-- Page thumbnails will be here -->
+                </div>
+                <button id="btn-add-more" class="add-more-card">
+                    <i data-lucide="plus"></i>
+                    <span>Add Page</span>
                 </button>
             </div>
-        </aside>
+        </section>
 
-        <!-- Right Main Area: Live Preview -->
-        <main class="preview-area">
-            <div class="preview-header glass-panel">
-                <div class="status-indicator">
-                    <span class="dot active"></span> Live Preview (6:18)
-                </div>
-                <div class="preview-actions">
-                    <button class="icon-btn" id="reset-layout" title="Reset Layout"><i class="fa-solid fa-rotate-right"></i></button>
-                </div>
-            </div>
+        <!-- View 5: PDF Export Settings & Finalize -->
+        <section id="view-export" class="app-view">
+            <header class="view-header glass">
+                <button class="icon-btn" id="btn-back-to-list">
+                    <i data-lucide="chevron-left"></i>
+                </button>
+                <h2>Export Settings</h2>
+            </header>
 
-            <!-- Video Frame (6:18 aspect ratio) inside a wrapper to center it -->
-            <div class="video-wrapper">
-                <div id="video-frame" class="video-frame">
-                    <!-- Text elements will be injected here -->
+            <div class="export-options glass">
+                <div class="preview-pdf-thumbnail">
+                    <i data-lucide="file-text"></i>
+                    <p id="pdf-summary">0 Pages • 0 MB</p>
                 </div>
-            </div>
 
-            <!-- Fullscreen Generation Overlay -->
-            <div id="generation-overlay" class="overlay hidden">
-                <div class="loader-content">
-                    <div class="spinner"></div>
-                    <h2 id="generation-text">Rendering Cinematic Video...</h2>
-                    <p>Applying animations and compiling frames</p>
-                    <div class="progress-bar">
-                        <div class="progress-fill" id="progress-fill"></div>
+                <div class="settings-group">
+                    <label>File Name</label>
+                    <input type="text" id="pdf-filename" value="Scanned_Document">
+                </div>
+
+                <div class="settings-grid">
+                    <div class="settings-item">
+                        <label>Page Size</label>
+                        <select id="pdf-size">
+                            <option value="a4">A4 (Standard)</option>
+                            <option value="letter">Letter</option>
+                            <option value="auto" selected>Auto</option>
+                        </select>
                     </div>
-                    <button class="btn btn-primary hidden" id="download-video-btn"><i class="fa-solid fa-download"></i> Download Video</button>
-                    <button class="btn btn-secondary hidden" id="close-overlay-btn">Close</button>
+                    <div class="settings-item">
+                        <label>Orientation</label>
+                        <select id="pdf-orientation">
+                            <option value="p">Portrait</option>
+                            <option value="l">Landscape</option>
+                        </select>
+                    </div>
+                    <div class="settings-item">
+                        <label>Quality</label>
+                        <select id="pdf-quality">
+                            <option value="0.5">Low</option>
+                            <option value="0.75" selected>Medium</option>
+                            <option value="1.0">High</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button id="btn-generate-pdf" class="cta-btn pulse">
+                    <i data-lucide="file-down"></i>
+                    Generate PDF
+                </button>
+            </div>
+        </section>
+
+        <!-- View 6: Success / Share Screen -->
+        <section id="view-success" class="app-view">
+            <div class="success-content glass">
+                <div class="success-icon">
+                    <i data-lucide="check-circle"></i>
+                </div>
+                <h2>PDF Ready!</h2>
+                <p>Your document has been successfully converted.</p>
+
+                <div class="share-actions">
+                    <button id="btn-download" class="action-btn">
+                        <i data-lucide="download"></i>
+                        Download
+                    </button>
+                    <button id="btn-share" class="action-btn">
+                        <i data-lucide="share-2"></i>
+                        Share
+                    </button>
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="post-actions">
+                    <button id="btn-reset-app" class="secondary-btn">
+                        <i data-lucide="refresh-cw"></i>
+                        Scan New Document
+                    </button>
                 </div>
             </div>
+        </section>
 
-        </main>
+        <!-- View 7: OCR Text Extraction -->
+        <section id="view-ocr" class="app-view">
+            <header class="view-header glass">
+                <button class="icon-btn" id="btn-close-ocr">
+                    <i data-lucide="chevron-left"></i>
+                </button>
+                <h2>Scanned Text</h2>
+                <button class="text-btn" id="btn-copy-ocr">Copy All</button>
+            </header>
 
+            <div class="ocr-content glass">
+                <div class="ocr-badge"><i data-lucide="layers"></i> AI Recognition</div>
+                <textarea id="ocr-text-view" spellcheck="false" placeholder="Extracting text..."></textarea>
+            </div>
+            <div class="ocr-footer">
+                <button id="btn-save-as-txt" class="secondary-btn">Download .txt</button>
+            </div>
+        </section>
+
+        <!-- Global Loader -->
+        <div id="global-loader" class="loader-overlay hidden">
+            <div class="spinner"></div>
+            <p id="loader-text">Processing...</p>
+        </div>
     </div>
 
-    <!-- Script imports -->
+    <!-- CV Helpers (Hidden Canvases) -->
+    <canvas id="hidden-cv-canvas" style="display:none;"></canvas>
+
     <script src="script.js"></script>
 </body>
 </html>
