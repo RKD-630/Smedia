@@ -1,559 +1,737 @@
-/**
- * DocScan Pro - Core Logic
- */
+// Global variables
+        let canvas = document.getElementById('mainCanvas');
+        let ctx = canvas.getContext('2d');
+        let currentPlatform = 'facebook';
+        let bgImage = null;
+        let saveFormat = 'png';
+        let textSettings = {
+            bold: false,
+            italic: false,
+            underline: false,
+            align: 'center',
+            bgEnabled: false,
+            shadowBlur: 0,
+            shadowColor: '#000000',
+            shadowOffsetX: 4,
+            shadowOffsetY: 4,
+            x: null,
+            y: null
+        };
+        
+        let selectedItem = null;
+        let isDragging = false;
+        let dragOffsetX = 0;
+        let dragOffsetY = 0;
 
-// --- Global State ---
-let cvReady = false;
-let stream = null;
-let currentView = 'welcome';
-let originalImage = null; 
-let documentPages = []; 
-let editIndex = -1; 
-let cropPoints = []; 
-let isAutoCapture = false;
-let stableFrames = 0;
-let scannerMode = 'document'; 
-let qrScanner = null;
-let lastPDFBlob = null;
-let filters = {
-    brightness: 100,
-    contrast: 100,
-    sharpness: 0,
-    filter: 'original'
-};
+        // Initialize
+        window.onload = function() {
+            drawCanvas();
+        };
 
-// --- View Navigation ---
-const views = {
-    welcome: document.getElementById('view-welcome'),
-    scanner: document.getElementById('view-scanner'),
-    editor: document.getElementById('view-editor'),
-    list: document.getElementById('view-list'),
-    export: document.getElementById('view-export'),
-    success: document.getElementById('view-success'),
-    ocr: document.getElementById('view-ocr'),
-    history: document.getElementById('view-history'),
-    qrResult: document.getElementById('view-qr-result')
-};
-
-function switchView(target) {
-    if (!views[target]) return;
-    Object.keys(views).forEach(v => views[v].classList.remove('active'));
-    views[target].classList.add('active');
-    currentView = target;
-
-    if (target === 'scanner') {
-        if (scannerMode === 'document') {
-            startCamera();
-        } else {
-            startQRScanner();
+        // Set platform and resize canvas
+        function setPlatform(platform, width, height) {
+            currentPlatform = platform;
+            canvas.width = width;
+            canvas.height = height;
+            
+            showToast(`${platform} canvas: ${width}x${height}`);
+            drawCanvas();
         }
-    } else {
-        stopCamera();
-        stopQRScanner();
-    }
-}
 
-// --- Initialization ---
-function onOpenCvReady() {
-    console.log('OpenCV.js is ready.');
-    cvReady = true;
-    const loaderText = document.getElementById('loader-text');
-    if (loaderText) loaderText.textContent = 'OpenCV Loaded';
-    setTimeout(() => hideLoader(), 500);
-}
+        // Set save format
+        function setFormat(format) {
+            saveFormat = format;
+            showToast(`Format set to ${format.toUpperCase()}`);
+        }
 
-document.addEventListener('DOMContentLoaded', () => {
-    if (window.lucide) lucide.createIcons();
-    initEventListeners();
-});
+        // Save image
+        function saveImage() {
+            try {
+                const link = document.createElement('a');
+                const timestamp = new Date().getTime();
+                
+                if (saveFormat === 'png') {
+                    link.download = `social-post-${timestamp}.png`;
+                    link.href = canvas.toDataURL('image/png', 1.0);
+                } else if (saveFormat === 'jpg') {
+                    link.download = `social-post-${timestamp}.jpg`;
+                    link.href = canvas.toDataURL('image/jpeg', 0.95);
+                } else if (saveFormat === 'webp') {
+                    link.download = `social-post-${timestamp}.webp`;
+                    link.href = canvas.toDataURL('image/webp', 0.95);
+                }
+                
+                link.click();
+                showToast('Image saved successfully!');
+            } catch (error) {
+                showToast('Error saving image: ' + error.message);
+            }
+        }
 
-function initEventListeners() {
-    // Welcome
-    safeAddListener('btn-request-permission', 'click', requestCameraPermission);
-    safeAddListener('btn-import-gallery-initial', 'click', () => document.getElementById('file-input-initial').click());
-    safeAddListener('file-input-initial', 'change', handleInitialImport);
+        // Draw canvas with all elements
+        function drawCanvas() {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw background
+            if (bgImage) {
+                drawBackgroundImage();
+            } else {
+                drawGradientBackground();
+            }
+            
+            // Draw text
+            drawText();
+        }
 
-    // Auto Toggle
-    safeAddListener('toggle-auto', 'click', (e) => {
-        isAutoCapture = !isAutoCapture;
-        e.currentTarget.classList.toggle('active', isAutoCapture);
-    });
-    
-    // Scanner Gallery
-    safeAddListener('btn-open-gallery', 'click', () => {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.multiple = true;
-        input.accept = 'image/*';
-        input.onchange = handleInitialImport;
-        input.click();
-    });
+        // Draw gradient background
+        function drawGradientBackground() {
+            const color1 = document.getElementById('gradientColor1').value;
+            const color2 = document.getElementById('gradientColor2').value;
+            
+            const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+            gradient.addColorStop(0, color1);
+            gradient.addColorStop(1, color2);
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
 
-    // Scanner Controls
-    safeAddListener('shutter-btn', 'click', captureFrame);
-    document.querySelectorAll('.close-scanner').forEach(btn => {
-        btn.addEventListener('click', () => switchView('welcome'));
-    });
-    safeAddListener('btn-view-list-from-scanner', 'click', () => switchView('list'));
+        // Draw background image
+        function drawBackgroundImage() {
+            if (!bgImage) return;
+            
+            const size = document.getElementById('imgSize').value / 100;
+            const contrast = document.getElementById('contrast').value;
+            const brightness = document.getElementById('brightness').value;
+            const darkness = document.getElementById('darkness').value;
+            const blur = document.getElementById('blur').value;
+            const opacity = document.getElementById('opacity').value / 100;
+            const sepia = document.getElementById('sepia').value;
+            const warmth = document.getElementById('warmth').value;
+            const tint = document.getElementById('tint').value;
+            const hue = document.getElementById('hue').value;
+            
+            // Apply filters
+            ctx.filter = `
+                contrast(${contrast}%)
+                brightness(${brightness - darkness}%)
+                blur(${blur}px)
+                opacity(${opacity})
+                sepia(${sepia}%)
+                hue-rotate(${hue}deg)
+            `;
+            
+            // Calculate dimensions
+            const imgWidth = bgImage.width * size;
+            const imgHeight = bgImage.height * size;
+            const x = (canvas.width - imgWidth) / 2;
+            const y = (canvas.height - imgHeight) / 2;
+            
+            // Draw image
+            ctx.globalAlpha = opacity;
+            ctx.drawImage(bgImage, x, y, imgWidth, imgHeight);
+            ctx.globalAlpha = 1;
+            ctx.filter = 'none';
+            
+            // Apply warmth and tint overlays
+            if (warmth !== 0 || tint !== 0) {
+                ctx.globalCompositeOperation = 'overlay';
+                if (warmth > 0) {
+                    ctx.fillStyle = `rgba(255, 160, 60, ${Math.abs(warmth) / 200})`;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                } else if (warmth < 0) {
+                    ctx.fillStyle = `rgba(60, 160, 255, ${Math.abs(warmth) / 200})`;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                }
+                
+                if (tint !== 0) {
+                    ctx.fillStyle = `rgba(180, 60, 255, ${Math.abs(tint) / 200})`;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                }
+                ctx.globalCompositeOperation = 'source-over';
+            }
+            
+            // Draw selection box and delete button
+            if (selectedItem === 'image') {
+                ctx.strokeStyle = '#3b82f6';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                ctx.strokeRect(x - 5, y - 5, imgWidth + 10, imgHeight + 10);
+                ctx.setLineDash([]);
+                
+                ctx.fillStyle = '#ef4444';
+                ctx.beginPath();
+                ctx.arc(x + imgWidth + 5, y - 5, 15, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 16px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('X', x + imgWidth + 5, y - 5);
+            }
+        }
 
-    // Mode Switching
-    document.querySelectorAll('.mode-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const mode = e.currentTarget.dataset.mode;
-            if (mode === scannerMode) return;
-            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-            e.currentTarget.classList.add('active');
-            scannerMode = mode;
-            if (currentView === 'scanner') {
-                stopCamera();
-                stopQRScanner();
-                if (mode === 'document') startCamera();
-                else startQRScanner();
+        // Draw text
+        function drawText() {
+            const text = document.getElementById('textContent').value;
+            if (!text) return;
+            
+            const fontFamily = document.getElementById('fontFamily').value;
+            const fontSize = document.getElementById('textSize').value;
+            const color = document.getElementById('textColor').value;
+            
+            ctx.font = `${textSettings.italic ? 'italic' : ''} ${textSettings.bold ? 'bold' : ''} ${fontSize}px ${fontFamily}`;
+            ctx.textAlign = textSettings.align;
+            ctx.textBaseline = 'middle';
+            
+            const defaultX = textSettings.align === 'left' ? 50 : 
+                      textSettings.align === 'right' ? canvas.width - 50 : 
+                      canvas.width / 2;
+            const defaultY = canvas.height / 2;
+            const x = textSettings.x !== null ? textSettings.x : defaultX;
+            const y = textSettings.y !== null ? textSettings.y : defaultY;
+            
+            // Apply shadow if exists
+            if (textSettings.shadowBlur > 0) {
+                ctx.shadowColor = textSettings.shadowColor;
+                ctx.shadowBlur = textSettings.shadowBlur;
+                ctx.shadowOffsetX = textSettings.shadowOffsetX;
+                ctx.shadowOffsetY = textSettings.shadowOffsetY;
+            }
+            
+            // Draw text background if enabled
+            if (textSettings.bgEnabled) {
+                const metrics = ctx.measureText(text);
+                const bgPadding = 20;
+                const bgHeight = parseInt(fontSize) + bgPadding;
+                const bgWidth = metrics.width + bgPadding * 2;
+                const bgX = textSettings.align === 'left' ? x - bgPadding :
+                           textSettings.align === 'right' ? x - bgWidth + bgPadding :
+                           x - bgWidth / 2;
+                
+                ctx.fillStyle = document.getElementById('textBgColor').value;
+                ctx.fillRect(bgX, y - bgHeight / 2, bgWidth, bgHeight);
+            }
+            
+            // Draw text
+            ctx.fillStyle = color;
+            ctx.fillText(text, x, y);
+            
+            // Reset shadow
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+            
+            // Draw underline if enabled
+            let metrics = ctx.measureText(text);
+            if (textSettings.underline) {
+                const underlineY = y + parseInt(fontSize) / 2 + 5;
+                const underlineX = textSettings.align === 'left' ? x :
+                                  textSettings.align === 'right' ? x - metrics.width :
+                                  x - metrics.width / 2;
+                
+                ctx.beginPath();
+                ctx.moveTo(underlineX, underlineY);
+                ctx.lineTo(underlineX + metrics.width, underlineY);
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 3;
+                ctx.stroke();
+            }
+            
+            // Draw selection box and delete button
+            if (selectedItem === 'text') {
+                const width = metrics.width;
+                const height = parseInt(fontSize);
+                let left = x;
+                if (textSettings.align === 'center') left = x - width / 2;
+                if (textSettings.align === 'right') left = x - width;
+                const top = y - height / 2;
+                
+                ctx.strokeStyle = '#3b82f6';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                ctx.strokeRect(left - 10, top - 10, width + 20, height + 20);
+                ctx.setLineDash([]);
+                
+                ctx.fillStyle = '#ef4444';
+                ctx.beginPath();
+                ctx.arc(left + width + 10, top - 10, 15, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 16px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('X', left + width + 10, top - 10);
+            }
+        }
+
+        // Apply text effect template
+        function applyTextTemplate(template) {
+            const textInput = document.getElementById('textContent');
+            if (!textInput.value || textInput.value === 'Your Text Here') {
+                textInput.value = 'Sample Text';
+            }
+            
+            switch(template) {
+                case 'neon':
+                    document.getElementById('textColor').value = '#ffffff';
+                    document.getElementById('shadowColor').value = '#00ffff';
+                    document.getElementById('shadowBlur').value = 20;
+                    textSettings.shadowBlur = 20;
+                    textSettings.bold = true;
+                    document.getElementById('boldBtn').classList.add('active');
+                    document.getElementById('fontFamily').value = 'Impact';
+                    break;
+                    
+                case 'gold':
+                    document.getElementById('textColor').value = '#ffd700';
+                    document.getElementById('shadowColor').value = '#b8860b';
+                    document.getElementById('shadowBlur').value = 5;
+                    textSettings.shadowBlur = 5;
+                    textSettings.bold = true;
+                    document.getElementById('boldBtn').classList.add('active');
+                    document.getElementById('fontFamily').value = 'Georgia';
+                    break;
+                    
+                case 'outline':
+                    document.getElementById('textColor').value = '#ffffff';
+                    document.getElementById('shadowColor').value = '#000000';
+                    document.getElementById('shadowBlur').value = 0;
+                    textSettings.shadowBlur = 0;
+                    textSettings.bold = true;
+                    document.getElementById('boldBtn').classList.add('active');
+                    document.getElementById('fontFamily').value = 'Arial';
+                    break;
+                    
+                case 'shadow':
+                    document.getElementById('textColor').value = '#ffffff';
+                    document.getElementById('shadowColor').value = '#000000';
+                    document.getElementById('shadowBlur').value = 10;
+                    textSettings.shadowBlur = 10;
+                    textSettings.shadowOffsetX = 8;
+                    textSettings.shadowOffsetY = 8;
+                    textSettings.bold = true;
+                    document.getElementById('boldBtn').classList.add('active');
+                    document.getElementById('fontFamily').value = 'Impact';
+                    break;
+                    
+                case 'gradient':
+                    document.getElementById('textColor').value = '#667eea';
+                    document.getElementById('shadowColor').value = '#764ba2';
+                    document.getElementById('shadowBlur').value = 15;
+                    textSettings.shadowBlur = 15;
+                    textSettings.bold = true;
+                    document.getElementById('boldBtn').classList.add('active');
+                    document.getElementById('fontFamily').value = 'Helvetica';
+                    break;
+                    
+                case 'retro':
+                    document.getElementById('textColor').value = '#ff6b6b';
+                    document.getElementById('shadowColor').value = '#4ecdc4';
+                    document.getElementById('shadowBlur').value = 8;
+                    textSettings.shadowBlur = 8;
+                    textSettings.shadowOffsetX = 4;
+                    textSettings.shadowOffsetY = 4;
+                    textSettings.bold = true;
+                    document.getElementById('boldBtn').classList.add('active');
+                    document.getElementById('fontFamily').value = 'Courier New';
+                    break;
+                    
+                case 'cyber':
+                    document.getElementById('textColor').value = '#00d9ff';
+                    document.getElementById('shadowColor').value = '#ff00ff';
+                    document.getElementById('shadowBlur').value = 15;
+                    textSettings.shadowBlur = 15;
+                    textSettings.bold = false;
+                    document.getElementById('boldBtn').classList.remove('active');
+                    document.getElementById('fontFamily').value = 'Courier New';
+                    break;
+                    
+                case 'elegant':
+                    document.getElementById('textColor').value = '#ffffff';
+                    document.getElementById('shadowColor').value = '#000000';
+                    document.getElementById('shadowBlur').value = 3;
+                    textSettings.shadowBlur = 3;
+                    textSettings.italic = true;
+                    document.getElementById('italicBtn').classList.add('active');
+                    document.getElementById('fontFamily').value = 'Georgia';
+                    break;
+            }
+            
+            document.getElementById('shadowBlurValue').textContent = document.getElementById('shadowBlur').value + 'px';
+            updateText();
+            showToast(`${template.charAt(0).toUpperCase() + template.slice(1)} template applied!`);
+        }
+
+        // Update background
+        function updateBackground() {
+            if (!bgImage) {
+                drawCanvas();
+            } else {
+                drawBackgroundImage();
+                drawText();
+            }
+        }
+
+        // Handle background image upload
+        function handleBgImage(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    bgImage = new Image();
+                    bgImage.onload = function() {
+                        drawCanvas();
+                        showToast('Background image loaded');
+                    };
+                    bgImage.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // Update image adjustments
+        function updateImageAdjustments() {
+            // Update value displays
+            document.getElementById('sizeValue').textContent = document.getElementById('imgSize').value + '%';
+            
+            drawCanvas();
+        }
+
+        // Update text
+        function updateText() {
+            document.getElementById('textSizeValue').textContent = document.getElementById('textSize').value + 'px';
+            textSettings.shadowBlur = parseInt(document.getElementById('shadowBlur').value);
+            document.getElementById('shadowBlurValue').textContent = textSettings.shadowBlur + 'px';
+            drawCanvas();
+        }
+
+        // Toggle text style
+        function toggleTextStyle(style) {
+            textSettings[style] = !textSettings[style];
+            document.getElementById(style + 'Btn').classList.toggle('active');
+            updateText();
+        }
+
+        // Set text alignment
+        function setTextAlign(align) {
+            textSettings.align = align;
+            document.querySelectorAll('.align-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('align' + align.charAt(0).toUpperCase() + align.slice(1)).classList.add('active');
+            updateText();
+        }
+
+        // Toggle text background
+        function toggleTextBackground() {
+            textSettings.bgEnabled = !textSettings.bgEnabled;
+            document.getElementById('textBgToggle').classList.toggle('active');
+            document.getElementById('textBgColorGroup').style.display = textSettings.bgEnabled ? 'block' : 'none';
+            updateText();
+        }
+
+        // Handle import all images
+        function handleImportAll(event) {
+            const files = event.target.files;
+            if (files.length > 0) {
+                showToast(`Imported ${files.length} image(s)`);
+                // You can add logic to handle multiple images here
+            }
+        }
+
+        // Show toast notification
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            // Maintain aspect ratio on resize
+            drawCanvas();
+        });
+
+        // Prevent default drag behaviors
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            canvas.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        // Handle drop on canvas
+        canvas.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files.length > 0 && files[0].type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    bgImage = new Image();
+                    bgImage.onload = function() {
+                        drawCanvas();
+                        showToast('Image dropped successfully');
+                    };
+                    bgImage.src = e.target.result;
+                };
+                reader.readAsDataURL(files[0]);
+            }
+        }
+        // Mobile bottom navigation tabs
+        document.querySelectorAll('.nav-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                
+                document.querySelector('.sidebar-right').classList.remove('hidden');
+                document.querySelectorAll('.sidebar-right .control-section').forEach(sec => sec.classList.remove('active'));
+                const targetId = tab.getAttribute('data-tab');
+                document.getElementById(targetId).classList.add('active');
+            });
+        });
+
+        document.getElementById('mobileSidebarToggle').addEventListener('click', () => {
+            document.querySelector('.sidebar-right').classList.add('hidden');
+        });
+
+        // Dynamic Select Width Adjustment
+        function adjustSelectWidth(select) {
+            let temp = document.createElement('select');
+            temp.className = select.className;
+            temp.style.visibility = 'hidden';
+            temp.style.position = 'absolute';
+            let option = document.createElement('option');
+            option.textContent = select.options[select.selectedIndex].text;
+            temp.appendChild(option);
+            document.body.appendChild(temp);
+            select.style.width = temp.offsetWidth + 'px';
+            temp.remove();
+        }
+
+        // Initialize widths on load
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.header-select').forEach(select => {
+                adjustSelectWidth(select);
+            });
+        });
+
+        // Hide bottom nav on double click
+
+        const bottomNav = document.querySelector('.bottom-nav');
+        const sidebarRight = document.querySelector('.sidebar-right');
+        const canvasContainer = document.querySelector('.canvas-container');
+
+        if (bottomNav) {
+            bottomNav.addEventListener('dblclick', () => {
+                bottomNav.style.display = 'none';
+                sidebarRight.style.display = 'none';
+            });
+        }
+
+        if (canvasContainer) {
+            canvasContainer.addEventListener('dblclick', () => {
+                if (window.innerWidth <= 1023) {
+                    bottomNav.style.display = 'flex';
+                    sidebarRight.style.display = 'block';
+                }
+            });
+        }
+        
+        // Master Slider Logic for Image Adjustments
+        const adjustConfig = {
+            contrast: { label: 'Contrast', min: 0, max: 200, slider: document.getElementById('contrast'), suffix: '%' },
+            brightness: { label: 'Brightness', min: 0, max: 200, slider: document.getElementById('brightness'), suffix: '%' },
+            darkness: { label: 'Darkness', min: 0, max: 100, slider: document.getElementById('darkness'), suffix: '%' },
+            blur: { label: 'Blur', min: 0, max: 20, slider: document.getElementById('blur'), suffix: 'px', step: 0.5 },
+            opacity: { label: 'Opacity', min: 0, max: 100, slider: document.getElementById('opacity'), suffix: '%' },
+            sepia: { label: 'Sepia', min: 0, max: 100, slider: document.getElementById('sepia'), suffix: '%' },
+            warmth: { label: 'Warmth', min: -100, max: 100, slider: document.getElementById('warmth'), suffix: '' },
+            tint: { label: 'Tint', min: -100, max: 100, slider: document.getElementById('tint'), suffix: '' },
+            hue: { label: 'Hue Rotate', min: 0, max: 360, slider: document.getElementById('hue'), suffix: '°' }
+        };
+
+        let activeAdjustment = 'contrast';
+        const masterAdjustSlider = document.getElementById('masterAdjustSlider');
+        const masterAdjustLabel = document.getElementById('masterAdjustLabel');
+        const masterAdjustValue = document.getElementById('masterAdjustValue');
+
+        document.querySelectorAll('#adjustOptionButtons .template-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('#adjustOptionButtons .template-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                activeAdjustment = btn.getAttribute('data-adjust');
+                const config = adjustConfig[activeAdjustment];
+                
+                masterAdjustLabel.textContent = config.label;
+                masterAdjustSlider.min = config.min;
+                masterAdjustSlider.max = config.max;
+                if(config.step) masterAdjustSlider.step = config.step; else masterAdjustSlider.removeAttribute('step');
+                masterAdjustSlider.value = config.slider.value;
+                masterAdjustValue.textContent = config.slider.value + config.suffix;
+            });
+        });
+
+        if(masterAdjustSlider) {
+            masterAdjustSlider.addEventListener('input', () => {
+                const config = adjustConfig[activeAdjustment];
+                config.slider.value = masterAdjustSlider.value;
+                masterAdjustValue.textContent = masterAdjustSlider.value + config.suffix;
+                updateImageAdjustments();
+            });
+        }
+        // Canvas Interaction
+        function getCanvasPos(evt) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            let clientX = evt.clientX;
+            let clientY = evt.clientY;
+            if (evt.touches && evt.touches.length > 0) {
+                clientX = evt.touches[0].clientX;
+                clientY = evt.touches[0].clientY;
+            } else if (evt.changedTouches && evt.changedTouches.length > 0) {
+                clientX = evt.changedTouches[0].clientX;
+                clientY = evt.changedTouches[0].clientY;
+            }
+            return {
+                x: (clientX - rect.left) * scaleX,
+                y: (clientY - rect.top) * scaleY
+            };
+        }
+
+        function checkTextBounds(x, y) {
+            const text = document.getElementById('textContent').value;
+            if (!text) return { inText: false, inDelete: false };
+            
+            const fontSize = parseInt(document.getElementById('textSize').value);
+            ctx.font = `${textSettings.italic ? 'italic' : ''} ${textSettings.bold ? 'bold' : ''} ${fontSize}px ${document.getElementById('fontFamily').value}`;
+            const metrics = ctx.measureText(text);
+            
+            const currentX = textSettings.x !== null ? textSettings.x : (textSettings.align === 'left' ? 50 : textSettings.align === 'right' ? canvas.width - 50 : canvas.width / 2);
+            const currentY = textSettings.y !== null ? textSettings.y : canvas.height / 2;
+            
+            const width = metrics.width;
+            const height = fontSize;
+            let left = currentX;
+            if (textSettings.align === 'center') left = currentX - width / 2;
+            if (textSettings.align === 'right') left = currentX - width;
+            const top = currentY - height / 2;
+            
+            const dx = x - (left + width + 10);
+            const dy = y - (top - 10);
+            const inDelete = (dx * dx + dy * dy) <= 225;
+            
+            const inText = x >= left - 10 && x <= left + width + 10 && y >= top - 10 && y <= top + height + 10;
+            return { inText, inDelete };
+        }
+
+        function checkImageBounds(x, y) {
+            if (!bgImage) return { inImage: false, inDelete: false };
+            const size = document.getElementById('imgSize').value / 100;
+            const imgWidth = bgImage.width * size;
+            const imgHeight = bgImage.height * size;
+            const imgX = (canvas.width - imgWidth) / 2;
+            const imgY = (canvas.height - imgHeight) / 2;
+            
+            const dx = x - (imgX + imgWidth + 5);
+            const dy = y - (imgY - 5);
+            const inDelete = (dx * dx + dy * dy) <= 225;
+            
+            const inImage = x >= imgX && x <= imgX + imgWidth && y >= imgY && y <= imgY + imgHeight;
+            return { inImage, inDelete };
+        }
+
+        function handlePointerDown(e) {
+            const pos = getCanvasPos(e);
+            
+            if (selectedItem === 'text') {
+                const textCheck = checkTextBounds(pos.x, pos.y);
+                if (textCheck.inDelete) {
+                    document.getElementById('textContent').value = '';
+                    selectedItem = null;
+                    textSettings.x = null;
+                    textSettings.y = null;
+                    updateText();
+                    return;
+                }
+            }
+            
+            if (selectedItem === 'image') {
+                const imgCheck = checkImageBounds(pos.x, pos.y);
+                if (imgCheck.inDelete) {
+                    bgImage = null;
+                    selectedItem = null;
+                    drawCanvas();
+                    return;
+                }
+            }
+            
+            const textCheck = checkTextBounds(pos.x, pos.y);
+            if (textCheck.inText) {
+                selectedItem = 'text';
+                isDragging = true;
+                const currentX = textSettings.x !== null ? textSettings.x : (textSettings.align === 'left' ? 50 : textSettings.align === 'right' ? canvas.width - 50 : canvas.width / 2);
+                const currentY = textSettings.y !== null ? textSettings.y : canvas.height / 2;
+                dragOffsetX = pos.x - currentX;
+                dragOffsetY = pos.y - currentY;
+                drawCanvas();
+                return;
+            }
+            
+            const imgCheck = checkImageBounds(pos.x, pos.y);
+            if (imgCheck.inImage) {
+                selectedItem = 'image';
+                drawCanvas();
+                return;
+            }
+            
+            selectedItem = null;
+            drawCanvas();
+        }
+
+        function handlePointerMove(e) {
+            if (!isDragging || selectedItem !== 'text') return;
+            const pos = getCanvasPos(e);
+            textSettings.x = pos.x - dragOffsetX;
+            textSettings.y = pos.y - dragOffsetY;
+            drawCanvas();
+        }
+
+        function handlePointerUp() {
+            isDragging = false;
+        }
+
+        canvas.addEventListener('mousedown', handlePointerDown);
+        canvas.addEventListener('mousemove', handlePointerMove);
+        window.addEventListener('mouseup', handlePointerUp);
+        
+        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handlePointerDown(e); }, { passive: false });
+        canvas.addEventListener('touchmove', (e) => { e.preventDefault(); handlePointerMove(e); }, { passive: false });
+        window.addEventListener('touchend', handlePointerUp);
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+                if (selectedItem === 'text') {
+                    document.getElementById('textContent').value = '';
+                    textSettings.x = null;
+                    textSettings.y = null;
+                    selectedItem = null;
+                    updateText();
+                } else if (selectedItem === 'image') {
+                    bgImage = null;
+                    selectedItem = null;
+                    drawCanvas();
+                }
             }
         });
-    });
-
-    // Editor
-    safeAddListener('btn-save-page', 'click', saveEditedPage);
-    safeAddListener('btn-cancel-edit', 'click', () => switchView(documentPages.length > 0 ? 'list' : 'scanner'));
-    safeAddListener('btn-rotate', 'click', rotateImage);
-    safeAddListener('btn-reset-crop', 'click', resetCrop);
-    safeAddListener('btn-auto-crop', 'click', () => alert("Auto-detection refined."));
-
-    document.querySelectorAll('.tool-tab').forEach(tab => {
-        tab.addEventListener('click', (e) => {
-            const targetTab = e.currentTarget.dataset.tab;
-            document.querySelectorAll('.tool-tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-            e.currentTarget.classList.add('active');
-            const pane = document.getElementById(`tab-${targetTab}`);
-            if (pane) pane.classList.add('active');
-        });
-    });
-
-    document.querySelectorAll('.filter-option').forEach(opt => {
-        opt.addEventListener('click', (e) => {
-            document.querySelectorAll('.filter-option').forEach(o => o.classList.remove('active'));
-            e.currentTarget.classList.add('active');
-            filters.filter = e.currentTarget.dataset.filter;
-            applyFilters();
-        });
-    });
-
-    safeAddListener('adj-brightness', 'input', (e) => { filters.brightness = e.target.value; applyFilters(); });
-    safeAddListener('adj-contrast', 'input', (e) => { filters.contrast = e.target.value; applyFilters(); });
-
-    // List & Export
-    safeAddListener('btn-back-to-scanner', 'click', () => switchView('scanner'));
-    safeAddListener('btn-prepare-pdf', 'click', () => switchView('export'));
-    safeAddListener('btn-add-more', 'click', () => switchView('scanner'));
-    safeAddListener('btn-back-to-list', 'click', () => switchView('list'));
-    safeAddListener('btn-generate-pdf', 'click', generatePDF);
-
-    // Success & History
-    safeAddListener('btn-download', 'click', downloadLastPDF);
-    safeAddListener('btn-share', 'click', shareLastPDF);
-    safeAddListener('btn-reset-app', 'click', resetApp);
-    safeAddListener('btn-view-history', 'click', openHistory);
-    safeAddListener('btn-close-history', 'click', () => switchView('success'));
-
-    // OCR & QR
-    safeAddListener('btn-close-ocr', 'click', () => switchView('list'));
-    safeAddListener('btn-copy-ocr', 'click', copyOCRText);
-    safeAddListener('btn-save-as-txt', 'click', downloadOCRText);
-    safeAddListener('btn-close-qr-result', 'click', () => switchView('scanner'));
-    safeAddListener('btn-copy-qr', 'click', copyQRResult);
-    safeAddListener('btn-open-link', 'click', openQRLink);
-}
-
-function safeAddListener(id, event, callback) {
-    const el = document.getElementById(id);
-    if (el) el.addEventListener(event, callback);
-}
-
-// --- Logic Implementation ---
-async function requestCameraPermission() {
-    showLoader('Initializing camera...');
-    try {
-        const checkStream = await navigator.mediaDevices.getUserMedia({ video: true });
-        checkStream.getTracks().forEach(track => track.stop());
-        switchView('scanner');
-    } catch (err) {
-        console.error("Camera error:", err);
-        const deniedDiv = document.getElementById('permission-denied');
-        if (deniedDiv) deniedDiv.classList.remove('hidden');
-        hideLoader();
-    }
-}
-
-async function startCamera() {
-    if (scannerMode !== 'document') return;
-    const video = document.getElementById('camera-preview');
-    const overlay = document.getElementById('detection-overlay');
-    if (overlay) overlay.style.display = 'block';
-    
-    try {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error("Unavailable");
-        stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } } 
-        });
-        video.srcObject = stream;
-        video.onloadedmetadata = () => { video.play(); startDetectionLoop(); };
-    } catch (err) {
-        alert("Camera access failed. Please use Gallery import.");
-        switchView('welcome');
-    }
-}
-
-function stopCamera() {
-    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
-}
-
-async function startQRScanner() {
-    if (scannerMode !== 'qr') return;
-    const overlay = document.getElementById('detection-overlay');
-    if (overlay) overlay.style.display = 'none';
-    
-    if (typeof Html5Qrcode === 'undefined') {
-        alert("QR Library loading...");
-        return;
-    }
-    
-    qrScanner = new Html5Qrcode("camera-container");
-    try {
-        await qrScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, handleQRSuccess);
-    } catch (err) {
-        console.error(err);
-    }
-}
-
-function stopQRScanner() {
-    if (qrScanner) { qrScanner.stop().catch(()=>{}); qrScanner = null; }
-}
-
-function handleQRSuccess(text) {
-    stopQRScanner();
-    switchView('qrResult');
-    document.getElementById('qr-result-text').textContent = text;
-    const isUrl = text.startsWith('http') || text.startsWith('www');
-    const openBtn = document.getElementById('btn-open-link');
-    if (openBtn) openBtn.classList.toggle('hidden', !isUrl);
-}
-
-function copyQRResult() {
-    const text = document.getElementById('qr-result-text').textContent;
-    navigator.clipboard.writeText(text).then(() => alert("Copied!"));
-}
-
-function openQRLink() {
-    const text = document.getElementById('qr-result-text').textContent;
-    window.open(text.startsWith('http') ? text : 'https://' + text, '_blank');
-}
-
-function captureFrame() {
-    const video = document.getElementById('camera-preview');
-    const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-    canvas.getContext('2d').drawImage(video, 0, 0);
-    processCapturedImage(canvas.toDataURL('image/jpeg', 0.95));
-}
-
-function handleInitialImport(e) {
-    const files = e.target.files;
-    if (!files || !files.length) return;
-    showLoader('Importing...');
-    let loaded = 0;
-    Array.from(files).forEach(file => {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            if (loaded === 0) processCapturedImage(event.target.result);
-            else { documentPages.push(event.target.result); updateBadge(); }
-            loaded++;
-            if (loaded === files.length) hideLoader();
-        };
-        reader.readAsDataURL(file);
-    });
-}
-
-function processCapturedImage(dataUrl) {
-    const img = new Image();
-    img.onload = () => { originalImage = img; editIndex = -1; initEditor(); switchView('editor'); };
-    img.src = dataUrl;
-}
-
-function startDetectionLoop() {
-    const video = document.getElementById('camera-preview');
-    const canvas = document.getElementById('detection-overlay');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const loop = () => {
-        if (currentView !== 'scanner' || scannerMode !== 'document') return;
-        canvas.width = video.offsetWidth; canvas.height = video.offsetHeight;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.strokeStyle = isAutoCapture ? '#2563eb' : '#10b981';
-        ctx.lineWidth = 4;
-        const pad = 40;
-        ctx.strokeRect(pad, pad, canvas.width - pad*2, canvas.height - pad*2);
-        if (isAutoCapture) {
-            stableFrames++;
-            if (stableFrames > 60) { captureFrame(); stableFrames = 0; }
-        } else { stableFrames = 0; }
-        requestAnimationFrame(loop);
-    };
-    loop();
-}
-
-function initEditor() {
-    const canvas = document.getElementById('editor-canvas');
-    const ctx = canvas.getContext('2d');
-    const ratio = Math.min((window.innerHeight * 0.5) / originalImage.width, (window.innerHeight * 0.5) / originalImage.height);
-    canvas.width = originalImage.width * ratio;
-    canvas.height = originalImage.height * ratio;
-    ctx.drawImage(originalImage, 0, 0, canvas.width, canvas.height);
-    const w = canvas.width; const h = canvas.height;
-    cropPoints = [{x:w*0.1, y:h*0.1}, {x:w*0.9, y:h*0.1}, {x:w*0.9, y:h*0.9}, {x:w*0.1, y:h*0.9}];
-    renderCropHandles();
-    applyFilters();
-}
-
-function renderCropHandles() {
-    const container = document.getElementById('crop-handles');
-    if (!container) return;
-    container.innerHTML = '';
-    
-    cropPoints.forEach((p, i) => {
-        const handle = document.createElement('div');
-        handle.className = 'crop-handle';
-        handle.style.left = `${p.x}px`;
-        handle.style.top = `${p.y}px`;
-        
-        let isDragging = false;
-        
-        const startDrag = (e) => {
-            isDragging = true;
-            handle.classList.add('dragging');
-            e.preventDefault();
-        };
-
-        const stopDrag = () => {
-            isDragging = false;
-            handle.classList.remove('dragging');
-        };
-
-        const onMove = (e) => {
-            if (!isDragging) return;
-            const touch = e.touches ? e.touches[0] : e;
-            const rect = document.getElementById('editor-canvas').getBoundingClientRect();
-            
-            let nx = touch.clientX - rect.left;
-            let ny = touch.clientY - rect.top;
-            
-            // Bounds check
-            nx = Math.max(0, Math.min(nx, rect.width));
-            ny = Math.max(0, Math.min(ny, rect.height));
-            
-            p.x = nx;
-            p.y = ny;
-            handle.style.left = `${nx}px`;
-            handle.style.top = `${ny}px`;
-            
-            drawCropOverlay();
-        };
-
-        handle.addEventListener('mousedown', startDrag);
-        handle.addEventListener('touchstart', startDrag, { passive: false });
-        
-        window.addEventListener('mousemove', onMove);
-        window.addEventListener('touchmove', onMove, { passive: false });
-        
-        window.addEventListener('mouseup', stopDrag);
-        window.addEventListener('touchend', stopDrag);
-        
-        container.appendChild(handle);
-    });
-    drawCropOverlay();
-}
-
-function drawCropOverlay() {
-    const canvas = document.getElementById('editor-canvas');
-    const ctx = canvas.getContext('2d');
-    applyFilters();
-    ctx.beginPath(); ctx.strokeStyle = '#2563eb'; ctx.lineWidth = 3;
-    ctx.moveTo(cropPoints[0].x, cropPoints[0].y);
-    cropPoints.forEach(p => ctx.lineTo(p.x, p.y));
-    ctx.closePath(); ctx.stroke();
-    ctx.fillStyle = 'rgba(37, 99, 235, 0.1)'; ctx.fill();
-}
-
-function applyFilters() {
-    const canvas = document.getElementById('editor-canvas');
-    const ctx = canvas.getContext('2d');
-    ctx.filter = `brightness(${filters.brightness}%) contrast(${filters.contrast}%)`;
-    if (filters.filter === 'bw') ctx.filter += ' grayscale(100%)';
-    else if (filters.filter === 'magic') ctx.filter += ' saturate(1.5)';
-    else if (filters.filter === 'enhance') ctx.filter += ' contrast(1.8) grayscale(100%)';
-    ctx.drawImage(originalImage, 0, 0, canvas.width, canvas.height);
-}
-
-function rotateImage() {
-    const c = document.createElement('canvas'); c.width = originalImage.height; c.height = originalImage.width;
-    const ctx = c.getContext('2d'); ctx.translate(c.width/2, c.height/2); ctx.rotate(Math.PI/2);
-    ctx.drawImage(originalImage, -originalImage.width/2, -originalImage.height/2);
-    const n = new Image(); n.onload = () => { originalImage = n; initEditor(); }; n.src = c.toDataURL();
-}
-
-function resetCrop() { initEditor(); }
-
-async function saveEditedPage() {
-    showLoader('Processing HD Scan...');
-    
-    let finalDataUrl;
-    
-    if (cvReady && originalImage) {
-        try {
-            const src = cv.imread(originalImage);
-            const dst = new cv.Mat();
-            
-            // Map crop points to original coords
-            const canvas = document.getElementById('editor-canvas');
-            const scaleX = originalImage.width / canvas.width;
-            const scaleY = originalImage.height / canvas.height;
-            
-            const p1 = [cropPoints[0].x * scaleX, cropPoints[0].y * scaleY];
-            const p2 = [cropPoints[1].x * scaleX, cropPoints[1].y * scaleY];
-            const p3 = [cropPoints[2].x * scaleX, cropPoints[2].y * scaleY];
-            const p4 = [cropPoints[3].x * scaleX, cropPoints[3].y * scaleY];
-            
-            // Output dimensions (HD)
-            const w = Math.max(Math.hypot(p2[0]-p1[0], p2[1]-p1[1]), Math.hypot(p3[0]-p4[0], p3[1]-p4[1]));
-            const h = Math.max(Math.hypot(p1[0]-p4[0], p1[1]-p4[1]), Math.hypot(p2[0]-p3[0], p2[1]-p3[1]));
-            
-            let srcCoords = cv.matFromArray(4, 1, cv.CV_32FC2, [...p1, ...p2, ...p3, ...p4]);
-            let dstCoords = cv.matFromArray(4, 1, cv.CV_32FC2, [0, 0, w, 0, w, h, 0, h]);
-            
-            let M = cv.getPerspectiveTransform(srcCoords, dstCoords);
-            cv.warpPerspective(src, dst, M, new cv.Size(w, h));
-            
-            const hCanvas = document.createElement('canvas');
-            cv.imshow(hCanvas, dst);
-            const hdCtx = hCanvas.getContext('2d');
-            
-            // Apply HD Filter
-            hdCtx.globalCompositeOperation = 'source-atop';
-            hdCtx.filter = `brightness(${filters.brightness}%) contrast(${filters.contrast}%)`;
-            if (filters.filter === 'bw') hdCtx.filter += ' grayscale(100%)';
-            if (filters.filter === 'magic') hdCtx.filter += ' saturate(1.4)';
-            if (filters.filter === 'enhance') hdCtx.filter += ' contrast(2.0) grayscale(100%)';
-            hdCtx.drawImage(hCanvas, 0, 0);
-
-            finalDataUrl = hCanvas.toDataURL('image/jpeg', 0.95);
-            src.delete(); dst.delete(); srcCoords.delete(); dstCoords.delete(); M.delete();
-        } catch (e) {
-            console.error("CV failed:", e);
-            finalDataUrl = document.getElementById('editor-canvas').toDataURL('image/jpeg', 0.95);
-        }
-    } else {
-        finalDataUrl = document.getElementById('editor-canvas').toDataURL('image/jpeg', 0.95);
-    }
-    
-    documentPages.push(finalDataUrl);
-    updateBadge(); renderPages(); hideLoader(); switchView('list');
-}
-
-function renderPages() {
-    const container = document.getElementById('document-pages');
-    if (!container) return;
-    container.innerHTML = '';
-    documentPages.forEach((p, i) => {
-        const card = document.createElement('div'); card.className = 'page-card';
-        card.innerHTML = `<img src="${p}"><div class="page-badge">${i+1}</div>
-            <div class="page-actions">
-                <button class="icon-btn" onclick="movePage(${i},-1)"><i data-lucide="chevron-up"></i></button>
-                <button class="icon-btn" onclick="movePage(${i},1)"><i data-lucide="chevron-down"></i></button>
-                <button class="icon-btn" onclick="performOCR(${i})"><i data-lucide="languages"></i></button>
-                <button class="icon-btn" onclick="deletePage(${i})"><i data-lucide="trash-2"></i></button>
-            </div>`;
-        container.appendChild(card);
-    });
-    if (window.lucide) lucide.createIcons();
-}
-
-function deletePage(i) { documentPages.splice(i, 1); renderPages(); updateBadge(); }
-function movePage(i, d) { 
-    const ni = i + d; 
-    if (ni >= 0 && ni < documentPages.length) { 
-        [documentPages[i], documentPages[ni]] = [documentPages[ni], documentPages[i]]; 
-        renderPages(); 
-    } 
-}
-function updateBadge() {
-    const b = document.getElementById('page-count-badge');
-    if (b) { b.textContent = documentPages.length; b.classList.toggle('hidden', documentPages.length === 0); }
-}
-
-async function generatePDF() {
-    if (!documentPages.length) return;
-    showLoader('Generating...');
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    documentPages.forEach((p, i) => { if (i > 0) doc.addPage(); doc.addImage(p, 'JPEG', 10, 10, 190, 277); });
-    lastPDFBlob = doc.output('blob');
-    saveToHistory({ name: document.getElementById('pdf-filename').value, pages: documentPages.length, date: new Date().toLocaleDateString(), size: (lastPDFBlob.size/1024).toFixed(0)+'KB' });
-    if (document.getElementById('pdf-summary')) document.getElementById('pdf-summary').textContent = `${documentPages.length} Pages`;
-    hideLoader(); switchView('success');
-}
-
-function downloadLastPDF() {
-    const link = document.createElement('a'); link.href = URL.createObjectURL(lastPDFBlob);
-    link.download = (document.getElementById('pdf-filename').value || 'doc') + '.pdf'; link.click();
-}
-
-async function shareLastPDF() {
-    if (navigator.share) {
-        const f = new File([lastPDFBlob], 'doc.pdf', {type:'application/pdf'});
-        navigator.share({files:[f], title:'Scan'}).catch(()=>{});
-    } else alert("Not supported");
-}
-
-async function performOCR(i) {
-    switchView('ocr'); showLoader('Reading...');
-    try {
-        const worker = await Tesseract.createWorker('eng');
-        const ret = await worker.recognize(documentPages[i]);
-        document.getElementById('ocr-text-view').value = ret.data.text;
-        await worker.terminate();
-    } catch (e) { console.error(e); }
-    finally { hideLoader(); }
-}
-
-function copyOCRText() { navigator.clipboard.writeText(document.getElementById('ocr-text-view').value); alert("Copied"); }
-function downloadOCRText() {
-    const b = new Blob([document.getElementById('ocr-text-view').value], {type:'text/plain'});
-    const l = document.createElement('a'); l.href = URL.createObjectURL(b); l.download = 'text.txt'; l.click();
-}
-
-function saveToHistory(item) {
-    let h = JSON.parse(localStorage.getItem('doc_scan_history') || '[]');
-    h.unshift(item); if (h.length > 10) h.pop();
-    localStorage.setItem('doc_scan_history', JSON.stringify(h));
-}
-
-function openHistory() { switchView('history'); renderHistory(); }
-function renderHistory() {
-    const h = JSON.parse(localStorage.getItem('doc_scan_history') || '[]');
-    const l = document.getElementById('history-list');
-    if (!l) return;
-    l.innerHTML = h.length ? '' : 'No documents yet.';
-    h.forEach(item => {
-        const d = document.createElement('div'); d.className = 'history-item glass';
-        d.innerHTML = `<div><h4>${item.name}.pdf</h4><p>${item.date} • ${item.pages} pgs</p></div>`;
-        l.appendChild(d);
-    });
-}
-
-function showLoader(t) { 
-    const lt = document.getElementById('loader-text'); if (lt) lt.textContent = t;
-    const gl = document.getElementById('global-loader'); if (gl) gl.classList.remove('hidden');
-}
-function hideLoader() { const gl = document.getElementById('global-loader'); if (gl) gl.classList.add('hidden'); }
-function resetApp() { documentPages = []; updateBadge(); switchView('welcome'); }

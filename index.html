@@ -1,315 +1,240 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DocScan Pro | Premium Document Scanner & PDF Converter</title>
-    <meta name="description" content="Professional document scanning and PDF conversion in your browser. Real-time edge detection, smart cropping, and text enhancement.">
+<!DOCTYPE html><html lang="en"><head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Social Media Image Creator</title>
     
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    
-    <!-- Libraries -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src='https://unpkg.com/tesseract.js@v5.1.0/dist/tesseract.min.js'></script>
-    <script async src="https://docs.opencv.org/4.x/opencv.js" onload="onOpenCvReady();" type="text/javascript"></script>
-    
-    <link rel="stylesheet" href="style.css">
-</head>
-<body class="mobile-first">
-    <div class="app-container">
-        <!-- Background Elements -->
-        <div class="glow-blob blob-tl"></div>
-        <div class="glow-blob blob-br"></div>
-
-        <!-- View 1: Welcome / Permissions -->
-        <section id="view-welcome" class="app-view active">
-            <div class="welcome-content glass">
-                <div class="app-logo">
-                    <div class="logo-icon">
-                        <i data-lucide="scan-line"></i>
-                    </div>
-                    <h1>DocScan<span>Pro</span></h1>
-                </div>
-                <p>Scan documents with precision. Experience professional-grade edge detection and PDF conversion instantly.</p>
-                
-                <div class="permission-card">
-                    <i data-lucide="camera"></i>
-                    <h3>Camera Permission</h3>
-                    <p>We need access to your camera to scan documents directly from your device.</p>
-                    <button id="btn-request-permission" class="primary-btn pulse">
-                        <i data-lucide="shield-check"></i>
-                        Allow Camera Access
-                    </button>
-                    <div id="permission-denied" class="error-msg hidden">
-                        <p>Camera access was denied. Please enable it in your browser settings to continue.</p>
-                    </div>
-                </div>
-
-                <div class="gallery-option">
-                    <p>Or start by importing from your gallery</p>
-                    <button id="btn-import-gallery-initial" class="secondary-btn">
-                        <i data-lucide="image"></i>
-                        Import Images
-                    </button>
-                    <input type="file" id="file-input-initial" multiple accept="image/*" class="hidden">
-                </div>
-            </div>
-        </section>
-
-        <!-- View 2: Camera / Scanner Interface -->
-        <section id="view-scanner" class="app-view">
-            <div class="camera-container">
-                <video id="camera-preview" autoplay playsinline></video>
-                <canvas id="detection-overlay"></canvas>
-                
-                <!-- Scanner UI Overlays -->
-                <div class="scanner-header">
-                    <button class="icon-btn close-scanner" title="Cancel">
-                        <i data-lucide="x"></i>
-                    </button>
-                    <div class="scanner-mode">Document Mode</div>
-                    <button id="toggle-flash" class="icon-btn" title="Flash">
-                        <i data-lucide="zap"></i>
-                    </button>
-                </div>
-
-                <div class="scanner-guides">
-                    <div class="guide-frame"></div>
-                    <div class="detection-status" id="scan-status">Searching for document...</div>
-                </div>
-
-                <div class="scanner-controls">
-                    <button id="btn-open-gallery" class="icon-btn" title="Gallery">
-                        <i data-lucide="image"></i>
-                    </button>
-                    <div class="shutter-btn-outer">
-                        <button id="shutter-btn" class="shutter-btn" title="Capture"></button>
-                    </div>
-                    <button id="btn-view-list" class="icon-btn badge-btn" title="Batch View">
-                        <i data-lucide="layers"></i>
-                        <span id="page-count-badge" class="badge">0</span>
-                    </button>
-                </div>
-            </div>
-        </section>
-
-        <!-- View 3: Document Editor (Crop & Filters) -->
-        <section id="view-editor" class="app-view">
-            <header class="view-header glass">
-                <button class="icon-btn" id="btn-cancel-edit">
-                    <i data-lucide="chevron-left"></i>
-                </button>
-                <h2>Edit Scan</h2>
-                <button class="text-btn" id="btn-save-page">Done</button>
-            </header>
-
-            <div class="editor-workspace">
-                <div id="crop-container" class="crop-container">
-                    <canvas id="editor-canvas"></canvas>
-                    <div id="crop-handles"></div>
-                </div>
-                
-                <div class="editor-tools glass">
-                    <div class="tool-tabs">
-                        <button class="tool-tab active" data-tab="crop"><i data-lucide="crop"></i>Crop</button>
-                        <button class="tool-tab" data-tab="filters"><i data-lucide="wand-2"></i>Filters</button>
-                        <button class="tool-tab" data-tab="adjust"><i data-lucide="sliders"></i>Adjust</button>
-                    </div>
-
-                    <div class="tool-content">
-                        <!-- Crop Tab -->
-                        <div id="tab-crop" class="tab-pane active">
-                            <div class="crop-actions">
-                                <button id="btn-rotate" class="icon-btn-text"><i data-lucide="rotate-cw"></i> Rotate</button>
-                                <button id="btn-reset-crop" class="icon-btn-text"><i data-lucide="refresh-ccw"></i> Reset</button>
-                                <button id="btn-auto-crop" class="icon-btn-text active"><i data-lucide="sparkles"></i> Auto</button>
-                            </div>
-                        </div>
-
-                        <!-- Filters Tab -->
-                        <div id="tab-filters" class="tab-pane">
-                            <div class="filter-scroll">
-                                <div class="filter-option active" data-filter="original">
-                                    <div class="filter-preview original"></div>
-                                    <span>Original</span>
-                                </div>
-                                <div class="filter-option" data-filter="magic">
-                                    <div class="filter-preview magic"></div>
-                                    <span>Magic</span>
-                                </div>
-                                <div class="filter-option" data-filter="bw">
-                                    <div class="filter-preview bw"></div>
-                                    <span>B&W</span>
-                                </div>
-                                <div class="filter-option" data-filter="enhance">
-                                    <div class="filter-preview enhance"></div>
-                                    <span>Eco</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Adjust Tab -->
-                        <div id="tab-adjust" class="tab-pane">
-                            <div class="adjust-list">
-                                <div class="adjust-item">
-                                    <label>Brightness</label>
-                                    <input type="range" id="adj-brightness" min="0" max="200" value="100">
-                                </div>
-                                <div class="adjust-item">
-                                    <label>Contrast</label>
-                                    <input type="range" id="adj-contrast" min="0" max="200" value="100">
-                                </div>
-                                <div class="adjust-item">
-                                    <label>Sharpness</label>
-                                    <input type="range" id="adj-sharpness" min="0" max="100" value="0">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- View 4: Document List (Batch View & Reorder) -->
-        <section id="view-list" class="app-view">
-            <header class="view-header glass">
-                <button class="icon-btn" id="btn-back-to-scanner">
-                    <i data-lucide="camera"></i>
-                </button>
-                <h2>My Document</h2>
-                <button class="primary-btn btn-sm" id="btn-prepare-pdf">Create PDF</button>
-            </header>
-
-            <div class="batch-scroller">
-                <div id="document-pages" class="pages-grid">
-                    <!-- Page thumbnails will be here -->
-                </div>
-                <button id="btn-add-more" class="add-more-card">
-                    <i data-lucide="plus"></i>
-                    <span>Add Page</span>
-                </button>
-            </div>
-        </section>
-
-        <!-- View 5: PDF Export Settings & Finalize -->
-        <section id="view-export" class="app-view">
-            <header class="view-header glass">
-                <button class="icon-btn" id="btn-back-to-list">
-                    <i data-lucide="chevron-left"></i>
-                </button>
-                <h2>Export Settings</h2>
-            </header>
-
-            <div class="export-options glass">
-                <div class="preview-pdf-thumbnail">
-                    <i data-lucide="file-text"></i>
-                    <p id="pdf-summary">0 Pages • 0 MB</p>
-                </div>
-
-                <div class="settings-group">
-                    <label>File Name</label>
-                    <input type="text" id="pdf-filename" value="Scanned_Document">
-                </div>
-
-                <div class="settings-grid">
-                    <div class="settings-item">
-                        <label>Page Size</label>
-                        <select id="pdf-size">
-                            <option value="a4">A4 (Standard)</option>
-                            <option value="letter">Letter</option>
-                            <option value="auto" selected>Auto</option>
-                        </select>
-                    </div>
-                    <div class="settings-item">
-                        <label>Orientation</label>
-                        <select id="pdf-orientation">
-                            <option value="p">Portrait</option>
-                            <option value="l">Landscape</option>
-                        </select>
-                    </div>
-                    <div class="settings-item">
-                        <label>Quality</label>
-                        <select id="pdf-quality">
-                            <option value="0.5">Low</option>
-                            <option value="0.75" selected>Medium</option>
-                            <option value="1.0">High</option>
-                        </select>
-                    </div>
-                </div>
-
-                <button id="btn-generate-pdf" class="cta-btn pulse">
-                    <i data-lucide="file-down"></i>
-                    Generate PDF
-                </button>
-            </div>
-        </section>
-
-        <!-- View 6: Success / Share Screen -->
-        <section id="view-success" class="app-view">
-            <div class="success-content glass">
-                <div class="success-icon">
-                    <i data-lucide="check-circle"></i>
-                </div>
-                <h2>PDF Ready!</h2>
-                <p>Your document has been successfully converted.</p>
-
-                <div class="share-actions">
-                    <button id="btn-download" class="action-btn">
-                        <i data-lucide="download"></i>
-                        Download
-                    </button>
-                    <button id="btn-share" class="action-btn">
-                        <i data-lucide="share-2"></i>
-                        Share
-                    </button>
-                </div>
-
-                <div class="divider"></div>
-
-                <div class="post-actions">
-                    <button id="btn-reset-app" class="secondary-btn">
-                        <i data-lucide="refresh-cw"></i>
-                        Scan New Document
-                    </button>
-                </div>
-            </div>
-        </section>
-
-        <!-- View 7: OCR Text Extraction -->
-        <section id="view-ocr" class="app-view">
-            <header class="view-header glass">
-                <button class="icon-btn" id="btn-close-ocr">
-                    <i data-lucide="chevron-left"></i>
-                </button>
-                <h2>Scanned Text</h2>
-                <button class="text-btn" id="btn-copy-ocr">Copy All</button>
-            </header>
-
-            <div class="ocr-content glass">
-                <div class="ocr-badge"><i data-lucide="layers"></i> AI Recognition</div>
-                <textarea id="ocr-text-view" spellcheck="false" placeholder="Extracting text..."></textarea>
-            </div>
-            <div class="ocr-footer">
-                <button id="btn-save-as-txt" class="secondary-btn">Download .txt</button>
-            </div>
-        </section>
-
-        <!-- Global Loader -->
-        <div id="global-loader" class="loader-overlay hidden">
-            <div class="spinner"></div>
-            <p id="loader-text">Processing...</p>
-        </div>
+<link rel="stylesheet" href="style.css" /></head>
+<body>
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
     </div>
 
-    <!-- CV Helpers (Hidden Canvases) -->
-    <canvas id="hidden-cv-canvas" style="display:none;"></canvas>
+    <div class="toast" id="toast"></div>
 
-    <script src="script.js"></script>
-</body>
-</html>
+
+
+    <div class="container">
+        <!-- Canvas Area -->
+        <div class="canvas-container">
+            <div class="canvas-wrapper" id="canvasWrapper">
+                <canvas id="mainCanvas" width="1200" height="630"></canvas>
+            </div>
+        </div>
+
+        <!-- Right Sidebar - Controls -->
+        <aside class="sidebar-right">
+            <button id="mobileSidebarToggle" class="sidebar-toggle-btn">▼ Hide Panel</button>
+            <!-- Explore Section (Moved from Header) -->
+            <h3 class="section-title" style="margin-top: 0; margin-bottom: 0.5rem;">Explore</h3>
+            <div class="header-buttons" style="display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center; margin-bottom: 1.5rem; padding: 0; overflow: visible;">
+                <button class="import-btn" onclick="document.getElementById('importAll').click()">
+                    📁 Import
+                </button>
+                <input type="file" id="importAll" multiple="" accept="image/*" onchange="handleImportAll(event)" style="display: none;" />
+                
+                <select id="platformSelect" class="header-select" onchange="const args = this.value.split(','); setPlatform(args[0], parseInt(args[1]), parseInt(args[2])); adjustSelectWidth(this);">
+                    <option value="Facebook,1200,630">Facebook</option>
+                    <option value="WhatsApp,1080,1080">WhatsApp</option>
+                    <option value="Twitter,1200,675">Twitter</option>
+                    <option value="Instagram,1080,1080">Instagram</option>
+                    <option value="Story,1080,1920">Story</option>
+                </select>
+
+                <select id="formatSelect" class="header-select" onchange="setFormat(this.value); adjustSelectWidth(this);">
+                    <option value="png">PNG</option>
+                    <option value="jpg">JPG</option>
+                    <option value="webp">WebP</option>
+                </select>
+
+                <button class="save-btn" onclick="saveImage()">
+                    💾 Save
+                </button>
+            </div>
+
+            <!-- Background Section -->
+            <div class="control-section active" id="tab-bg">
+                <h3 class="section-title">Background</h3>
+                
+                <div style="display: flex; gap: 1rem; align-items: stretch; justify-content: space-between;">
+                    <div class="control-group" style="margin-bottom: 0; display: flex; flex-direction: column; align-items: center; gap: 0.25rem;">
+                        <label class="control-label" style="margin-bottom: 0; font-size: 0.75rem;">Color 1</label>
+                        <input type="color" id="gradientColor1" value="#667eea" onchange="updateBackground()" style="width: 36px; height: 36px; padding: 0; border: none; border-radius: 4px; cursor: pointer;" />
+                    </div>
+
+                    <div class="control-group" style="margin-bottom: 0; display: flex; flex-direction: column; align-items: center; gap: 0.25rem;">
+                        <label class="control-label" style="margin-bottom: 0; font-size: 0.75rem;">Color 2</label>
+                        <input type="color" id="gradientColor2" value="#764ba2" onchange="updateBackground()" style="width: 36px; height: 36px; padding: 0; border: none; border-radius: 4px; cursor: pointer;" />
+                    </div>
+
+                    <div class="control-group" style="margin-bottom: 0; flex: 1;">
+                        <label class="file-label" onclick="document.getElementById('bgImage').click()" style="padding: 0.5rem; display: flex; align-items: center; justify-content: center; height: 100%; font-size: 0.85rem; margin: 0;">
+                            📤 Upload BG
+                        </label>
+                        <input type="file" id="bgImage" accept="image/*" onchange="handleBgImage(event)" style="display: none;" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- Image Adjustments -->
+            <div class="control-section" id="tab-adjust">
+                <h3 class="section-title">Image Adjustments</h3>
+                
+                <div class="control-group">
+                    <label class="control-label">
+                        Size <span class="range-value" id="sizeValue">100%</span>
+                    </label>
+                    <input type="range" id="imgSize" min="0" max="200" value="100" oninput="updateImageAdjustments()" />
+                </div>
+
+                <div class="template-grid" id="adjustOptionButtons" style="margin-bottom: 1.5rem; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;">
+                    <button class="template-btn active" data-adjust="contrast" style="font-size: 0.75rem; padding: 0.5rem; min-height: unset;">Contrast</button>
+                    <button class="template-btn" data-adjust="brightness" style="font-size: 0.75rem; padding: 0.5rem; min-height: unset;">Brightness</button>
+                    <button class="template-btn" data-adjust="darkness" style="font-size: 0.75rem; padding: 0.5rem; min-height: unset;">Darkness</button>
+                    <button class="template-btn" data-adjust="blur" style="font-size: 0.75rem; padding: 0.5rem; min-height: unset;">Blur</button>
+                    <button class="template-btn" data-adjust="opacity" style="font-size: 0.75rem; padding: 0.5rem; min-height: unset;">Opacity</button>
+                    <button class="template-btn" data-adjust="sepia" style="font-size: 0.75rem; padding: 0.5rem; min-height: unset;">Sepia</button>
+                    <button class="template-btn" data-adjust="warmth" style="font-size: 0.75rem; padding: 0.5rem; min-height: unset;">Warmth</button>
+                    <button class="template-btn" data-adjust="tint" style="font-size: 0.75rem; padding: 0.5rem; min-height: unset;">Tint</button>
+                    <button class="template-btn" data-adjust="hue" style="font-size: 0.75rem; padding: 0.5rem; min-height: unset;">Hue Rotate</button>
+                </div>
+
+                <div class="control-group" id="masterSliderGroup">
+                    <label class="control-label">
+                        <span id="masterAdjustLabel">Contrast</span> <span class="range-value" id="masterAdjustValue">100%</span>
+                    </label>
+                    <input type="range" id="masterAdjustSlider" min="0" max="200" value="100" />
+                </div>
+
+                <div style="display: none;">
+                    <input type="range" id="contrast" min="0" max="200" value="100" />
+                    <input type="range" id="brightness" min="0" max="200" value="100" />
+                    <input type="range" id="darkness" min="0" max="100" value="0" />
+                    <input type="range" id="blur" min="0" max="20" value="0" />
+                    <input type="range" id="opacity" min="0" max="100" value="100" />
+                    <input type="range" id="sepia" min="0" max="100" value="0" />
+                    <input type="range" id="warmth" min="-100" max="100" value="0" />
+                    <input type="range" id="tint" min="-100" max="100" value="0" />
+                    <input type="range" id="hue" min="0" max="360" value="0" />
+                </div>
+            </div>
+
+            <!-- Text Effect Templates -->
+            <div class="control-section" id="tab-effects">
+                <h3 class="section-title">Text Effect Templates</h3>
+                <div class="template-grid">
+                    <button class="template-btn neon" onclick="applyTextTemplate('neon')">✨ Neon Glow</button>
+                    <button class="template-btn gold" onclick="applyTextTemplate('gold')">🏆 Gold</button>
+                    <button class="template-btn outline" onclick="applyTextTemplate('outline')">⭕ Outline</button>
+                    <button class="template-btn shadow" onclick="applyTextTemplate('shadow')">🌑 3D Shadow</button>
+                    <button class="template-btn gradient" onclick="applyTextTemplate('gradient')">🌈 Gradient</button>
+                    <button class="template-btn" onclick="applyTextTemplate('retro')" style="background: #ff6b6b; color: white;">📼 Retro</button>
+                    <button class="template-btn" onclick="applyTextTemplate('cyber')" style="background: #00d9ff; color: #000;">🤖 Cyber</button>
+                    <button class="template-btn" onclick="applyTextTemplate('elegant')" style="background: linear-gradient(135deg, #667eea, #764ba2);">💎 Elegant</button>
+                </div>
+            </div>
+
+            <!-- Text Tools -->
+            <div class="control-section" id="tab-text" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; align-items: end;">
+                <h3 class="section-title" style="grid-column: 1 / -1; margin-bottom: 0;">Text Tools</h3>
+                
+                <div class="control-group" style="grid-column: 1 / -1; margin-bottom: 0;">
+                    <label class="control-label">Text Content</label>
+                    <textarea id="textContent" placeholder="Enter your text here..." oninput="updateText()" style="min-height: 60px;"></textarea>
+                </div>
+
+                <div class="control-group" style="grid-column: span 2; margin-bottom: 0;">
+                    <label class="control-label">Font Family</label>
+                    <select id="fontFamily" onchange="updateText()" style="width: 100%; padding: 0.5rem; border-radius: 8px; border: 1px solid var(--border-color); background: var(--secondary-bg); color: var(--text-primary);">
+                        <option value="Arial">Arial</option>
+                        <option value="Helvetica">Helvetica</option>
+                        <option value="Times New Roman">Times New Roman</option>
+                        <option value="Georgia">Georgia</option>
+                        <option value="Verdana">Verdana</option>
+                        <option value="Courier New">Courier New</option>
+                        <option value="Impact">Impact</option>
+                        <option value="Comic Sans MS">Comic Sans MS</option>
+                    </select>
+                </div>
+
+                <div class="control-group" style="margin-bottom: 0; display: flex; flex-direction: column; width: 100%;">
+                    <label class="control-label">Text Color</label>
+                    <input type="color" id="textColor" value="#ffffff" onchange="updateText()" style="width: 100%; height: 36px; padding: 0; border: none; border-radius: 4px; cursor: pointer;" />
+                </div>
+
+                <div class="control-group" style="grid-column: 1 / -1; margin-bottom: 0;">
+                    <label class="control-label">
+                        Text Size <span class="range-value" id="textSizeValue">48px</span>
+                    </label>
+                    <input type="range" id="textSize" min="12" max="120" value="48" oninput="updateText()" />
+                </div>
+
+                <div class="control-group" style="grid-column: 1 / -1; margin-bottom: 0;">
+                    <label class="control-label">Styling</label>
+                    <div class="text-controls" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;">
+                        <button class="text-btn" id="boldBtn" onclick="toggleTextStyle('bold')">B</button>
+                        <button class="text-btn" id="italicBtn" onclick="toggleTextStyle('italic')">I</button>
+                        <button class="text-btn" id="underlineBtn" onclick="toggleTextStyle('underline')">U</button>
+                    </div>
+                </div>
+
+                <div class="control-group" style="grid-column: 1 / -1; margin-bottom: 0;">
+                    <label class="control-label">Alignment</label>
+                    <div class="align-controls" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;">
+                        <button class="align-btn active" id="alignLeft" onclick="setTextAlign('left')">⬅ Left</button>
+                        <button class="align-btn" id="alignCenter" onclick="setTextAlign('center')">⬆ Center</button>
+                        <button class="align-btn" id="alignRight" onclick="setTextAlign('right')">➡ Right</button>
+                    </div>
+                </div>
+
+                <div class="control-group" style="margin-bottom: 0; align-self: center;">
+                    <div class="toggle-switch">
+                        <span class="control-label" style="margin: 0; font-size: 0.85rem;">Text BG</span>
+                        <div class="toggle" id="textBgToggle" onclick="toggleTextBackground()">
+                            <div class="toggle-slider"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="control-group" id="textBgColorGroup" style="display: none; margin-bottom: 0; width: 100%;">
+                    <label class="control-label" style="font-size: 0.85rem;">BG Color</label>
+                    <input type="color" id="textBgColor" value="#000000" onchange="updateText()" style="width: 100%; height: 36px; padding: 0; border: none; border-radius: 4px; cursor: pointer;" />
+                </div>
+
+                <div class="control-group" style="margin-bottom: 0; display: flex; flex-direction: column; width: 100%;">
+                    <label class="control-label" style="font-size: 0.85rem;">Shadow</label>
+                    <input type="color" id="shadowColor" value="#000000" onchange="updateText()" style="width: 100%; height: 36px; padding: 0; border: none; border-radius: 4px; cursor: pointer;" />
+                </div>
+
+                <div class="control-group" style="grid-column: 1 / -1; margin-bottom: 0;">
+                    <label class="control-label">
+                        Shadow Blur <span class="range-value" id="shadowBlurValue">0px</span>
+                    </label>
+                    <input type="range" id="shadowBlur" min="0" max="50" value="0" oninput="updateText()" />
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Bottom Navigation for Mobile -->
+    <nav class="bottom-nav">
+        <button class="nav-tab active" data-tab="tab-bg">
+            <span style="font-size: 1.25rem;">🖼️</span>
+            <span>BG</span>
+        </button>
+        <button class="nav-tab" data-tab="tab-adjust">
+            <span style="font-size: 1.25rem;">🎛️</span>
+            <span>Adjust</span>
+        </button>
+        <button class="nav-tab" data-tab="tab-effects">
+            <span style="font-size: 1.25rem;">✨</span>
+            <span>Effects</span>
+        </button>
+        <button class="nav-tab" data-tab="tab-text">
+            <span style="font-size: 1.25rem;">📝</span>
+            <span>Text</span>
+        </button>
+    </nav>
+
+    
+
+<script src="script.js"></script></body></html>
