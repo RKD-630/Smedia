@@ -729,30 +729,26 @@ html, body {
     display: none;
   }
   .sidebar-tabs {
-    position: absolute; top: var(--topbar-h); left: 0; right: auto; bottom: auto;
-    width: 200px; z-index: 120;
-    background: var(--bg-surface);
-    border-right: 1px solid var(--border);
-    border-bottom: 1px solid var(--border);
-    border-radius: 0 0 var(--radius-lg) 0;
-    pointer-events: auto; padding: 8px 0;
-    display: flex; flex-direction: column; justify-content: flex-start;
-    box-shadow: var(--shadow-lg);
-    transform: translateX(-150%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: fixed; bottom: 0; left: 0; right: 0; top: auto;
+    z-index: 110; background: var(--bg-surface);
+    border-top: none; border-bottom: none; border-right: none;
+    pointer-events: auto; padding-bottom: env(safe-area-inset-bottom, 0px);
+    display: flex; flex-direction: row; justify-content: space-around;
+    transform: translateY(0); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 -4px 12px rgba(0,0,0,0.1);
+    width: 100%;
+    border-radius: 0;
   }
-  .left-sidebar.show-dropdown .sidebar-tabs {
-    transform: translateX(0);
+  .left-sidebar.hide-tabs .sidebar-tabs {
+    transform: translateY(150%);
   }
   .sidebar-tab {
-    padding: 16px; border: none; border-bottom: 1px solid var(--border-light);
-    flex-direction: row; justify-content: flex-start; gap: 12px;
-  }
-  .sidebar-tab:last-child {
-    border-bottom: none;
+    padding: 12px 0; border: none; border-top: 2px solid transparent; flex: 1;
+    flex-direction: column; gap: 4px; font-size: 10px;
   }
   .sidebar-tab.active {
-    border-top: none; border-left: 4px solid var(--accent-2);
-    color: var(--accent-2); background: rgba(139, 92, 246, 0.05);
+    border-left: none; border-top-color: var(--accent-2);
+    color: var(--accent-2); background: rgba(139, 92, 246, 0.1);
   }
   .panels-wrapper {
     position: fixed; left: 0; right: 0; bottom: 0; top: auto;
@@ -772,7 +768,7 @@ html, body {
     position: static; border-top: none; border-radius: 0; box-shadow: none; transform: none !important;
   }
   .canvas-area {
-    padding-bottom: 0;
+    padding-bottom: 60px;
     justify-content: flex-start;
     padding-top: 16px;
   }

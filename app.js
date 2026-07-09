@@ -1605,7 +1605,6 @@ document.querySelectorAll('.sidebar-tab').forEach(tab => {
         $('leftSidebar').classList.add('open');
         switchPanel(tab.dataset.panel);
       }
-      $('leftSidebar').classList.remove('show-dropdown');
     } else {
       switchPanel(tab.dataset.panel);
     }
@@ -1978,28 +1977,12 @@ function init() {
   // Mobile menu toggle
   const btnMenu = $('btnMobileMenu');
   if (btnMenu) {
-    btnMenu.addEventListener('click', (e) => {
-      e.stopPropagation();
+    btnMenu.addEventListener('click', () => {
       const sidebar = $('leftSidebar');
-      if (sidebar.classList.contains('show-dropdown')) {
-        sidebar.classList.remove('show-dropdown');
-      } else {
-        sidebar.classList.add('show-dropdown');
-        sidebar.classList.remove('open');
-      }
+      sidebar.classList.remove('open');
+      sidebar.classList.toggle('hide-tabs');
     });
   }
-  
-  // Close dropdown when clicking outside
-  document.addEventListener('click', e => {
-    if (window.innerWidth <= 600) {
-      const sidebar = $('leftSidebar');
-      const btnMenu = $('btnMobileMenu');
-      if (sidebar && sidebar.classList.contains('show-dropdown') && !e.target.closest('.sidebar-tabs') && !e.target.closest('#btnMobileMenu')) {
-        sidebar.classList.remove('show-dropdown');
-      }
-    }
-  });
 
   // Mobile drag handles
   let dragStartY = 0;
