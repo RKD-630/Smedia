@@ -7,10 +7,10 @@
   <meta name="description" content="Design stunning social media posts with rich background, image, and text controls. Export for Instagram, Facebook, Twitter & WhatsApp." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Cinzel:wght@400;700&family=Dancing+Script:wght@400;700&family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@400;600;700;900&family=Oswald:wght@400;700&family=Outfit:wght@400;600;700&family=Pacifico&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Righteous&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
-<body>
+<body data-theme="light">
   <!-- Top Nav -->
   <header class="topbar">
     <div class="topbar-brand">
@@ -46,6 +46,10 @@
 
     <div class="topbar-actions">
       <div class="export-group">
+        <button class="btn-secondary" id="btnThemeToggle" title="Toggle Theme" style="padding: 8px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="iconThemeMoon"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="iconThemeSun" style="display: none;"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+        </button>
         <button class="btn-primary" id="btnExportPNG">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           PNG
@@ -99,6 +103,15 @@
           <span>Layers</span>
         </button>
       </div>
+
+      <div class="drag-handle-container tabs-drag-handle" id="tabsDragHandle">
+        <div class="drag-handle"></div>
+      </div>
+
+      <div class="panels-wrapper" id="mobilePanelsWrapper">
+        <div class="drag-handle-container panel-drag-handle" id="panelDragHandle">
+          <div class="drag-handle"></div>
+        </div>
 
       <!-- Background Panel -->
       <div class="panel active" id="panelBackground">
@@ -217,82 +230,27 @@
         </div>
         <div class="panel-section" id="imageAdjustSection">
           <h3 class="section-title">Adjustments</h3>
-          <div class="control-row">
-            <label class="control-label">Brightness</label>
-            <div class="slider-wrap">
-              <input type="range" class="slider" id="imgBrightness" min="0" max="200" value="100" />
-              <span class="slider-val" id="imgBrightnessVal">100</span>
+          <div class="master-slider-section">
+            <div class="control-row">
+              <label class="control-label" id="masterSliderLabel">Brightness</label>
+              <div class="slider-wrap">
+                <input type="range" class="slider" id="masterFilterSlider" min="0" max="200" value="100" />
+                <span class="slider-val" id="masterFilterVal">100</span>
+              </div>
             </div>
           </div>
-          <div class="control-row">
-            <label class="control-label">Contrast</label>
-            <div class="slider-wrap">
-              <input type="range" class="slider" id="imgContrast" min="0" max="200" value="100" />
-              <span class="slider-val" id="imgContrastVal">100</span>
-            </div>
-          </div>
-          <div class="control-row">
-            <label class="control-label">Darkness</label>
-            <div class="slider-wrap">
-              <input type="range" class="slider" id="imgDarkness" min="0" max="100" value="0" />
-              <span class="slider-val" id="imgDarknessVal">0</span>
-            </div>
-          </div>
-          <div class="control-row">
-            <label class="control-label">Blur</label>
-            <div class="slider-wrap">
-              <input type="range" class="slider" id="imgBlur" min="0" max="20" value="0" step="0.5" />
-              <span class="slider-val" id="imgBlurVal">0</span>
-            </div>
-          </div>
-          <div class="control-row">
-            <label class="control-label">Opacity</label>
-            <div class="slider-wrap">
-              <input type="range" class="slider" id="imgOpacity" min="0" max="100" value="100" />
-              <span class="slider-val" id="imgOpacityVal">100</span>
-            </div>
-          </div>
-          <div class="control-row">
-            <label class="control-label">Sepia</label>
-            <div class="slider-wrap">
-              <input type="range" class="slider" id="imgSepia" min="0" max="100" value="0" />
-              <span class="slider-val" id="imgSepiaVal">0</span>
-            </div>
-          </div>
-          <div class="control-row">
-            <label class="control-label">Warmth</label>
-            <div class="slider-wrap">
-              <input type="range" class="slider" id="imgWarmth" min="-100" max="100" value="0" />
-              <span class="slider-val" id="imgWarmthVal">0</span>
-            </div>
-          </div>
-          <div class="control-row">
-            <label class="control-label">Tint</label>
-            <div class="slider-wrap">
-              <input type="range" class="slider" id="imgTint" min="-100" max="100" value="0" />
-              <span class="slider-val" id="imgTintVal">0</span>
-            </div>
-          </div>
-          <div class="control-row">
-            <label class="control-label">Hue</label>
-            <div class="slider-wrap">
-              <input type="range" class="slider" id="imgHue" min="0" max="360" value="0" />
-              <span class="slider-val" id="imgHueVal">0°</span>
-            </div>
-          </div>
-          <div class="control-row">
-            <label class="control-label">Saturation</label>
-            <div class="slider-wrap">
-              <input type="range" class="slider" id="imgSaturation" min="0" max="200" value="100" />
-              <span class="slider-val" id="imgSaturationVal">100</span>
-            </div>
-          </div>
-          <div class="control-row">
-            <label class="control-label">Image Size</label>
-            <div class="slider-wrap">
-              <input type="range" class="slider" id="imgSize" min="10" max="500" value="100" />
-              <span class="slider-val" id="imgSizeVal">100%</span>
-            </div>
+          <div class="filter-select-row" id="filterSelectRow">
+            <button class="filter-btn active" data-filter="brightness">Brightness</button>
+            <button class="filter-btn" data-filter="contrast">Contrast</button>
+            <button class="filter-btn" data-filter="darkness">Darkness</button>
+            <button class="filter-btn" data-filter="blur">Blur</button>
+            <button class="filter-btn" data-filter="opacity">Opacity</button>
+            <button class="filter-btn" data-filter="sepia">Sepia</button>
+            <button class="filter-btn" data-filter="warmth">Warmth</button>
+            <button class="filter-btn" data-filter="tint">Tint</button>
+            <button class="filter-btn" data-filter="hue">Hue</button>
+            <button class="filter-btn" data-filter="saturation">Saturation</button>
+            <button class="filter-btn" data-filter="imgSize">Image Size</button>
           </div>
           <button class="btn-ghost full-width" id="btnResetFilters">Reset Filters</button>
         </div>
@@ -324,9 +282,24 @@
           <h3 class="section-title">Text Layers</h3>
           <button class="btn-primary full-width" id="btnAddText">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Add New Text Layer
+            Add Default Text Layer
           </button>
         </div>
+        
+        <div class="panel-section" id="textTemplatesSection">
+          <h3 class="section-title">Text Templates</h3>
+          <div class="text-templates-grid">
+            <button class="text-template-btn t-montserrat" data-template="montserrat">Montserrat</button>
+            <button class="text-template-btn t-oswald" data-template="oswald">Oswald</button>
+            <button class="text-template-btn t-bebas" data-template="bebas">Bebas Neue</button>
+            <button class="text-template-btn t-playfair" data-template="playfair">Playfair Display</button>
+            <button class="text-template-btn t-cinzel" data-template="cinzel">Cinzel</button>
+            <button class="text-template-btn t-dancing" data-template="dancing">Dancing Script</button>
+            <button class="text-template-btn t-pacifico" data-template="pacifico">Pacifico</button>
+            <button class="text-template-btn t-righteous" data-template="righteous">Righteous</button>
+          </div>
+        </div>
+
         <div class="panel-section hidden" id="textEditorSection">
           <h3 class="section-title">Text Properties</h3>
           <div class="control-row" style="align-items:flex-start;gap:8px">
@@ -338,13 +311,17 @@
             <select class="select-ctrl" id="fontFamily">
               <option value="Inter, sans-serif">Inter</option>
               <option value="'Outfit', sans-serif">Outfit</option>
+              <option value="'Montserrat', sans-serif">Montserrat</option>
+              <option value="'Oswald', sans-serif">Oswald</option>
+              <option value="'Bebas Neue', sans-serif">Bebas Neue</option>
+              <option value="'Playfair Display', serif">Playfair Display</option>
+              <option value="'Cinzel', serif">Cinzel</option>
+              <option value="'Dancing Script', cursive">Dancing Script</option>
+              <option value="'Pacifico', cursive">Pacifico</option>
+              <option value="'Righteous', cursive">Righteous</option>
               <option value="'Georgia', serif">Georgia</option>
               <option value="'Times New Roman', serif">Times New Roman</option>
-              <option value="'Courier New', monospace">Courier New</option>
               <option value="'Arial', sans-serif">Arial</option>
-              <option value="'Helvetica', sans-serif">Helvetica</option>
-              <option value="'Verdana', sans-serif">Verdana</option>
-              <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
               <option value="'Impact', sans-serif">Impact</option>
             </select>
           </div>
@@ -469,6 +446,7 @@
           </div>
         </div>
       </div>
+      </div> <!-- end panels-wrapper -->
     </aside>
 
     <!-- Canvas Area -->

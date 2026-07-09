@@ -15,7 +15,7 @@ const State = {
   zoom: 1,
   background: {
     type: 'solid',          // solid | gradient | image
-    solidColor: '#1a1a2e',
+    solidColor: '#ffffff',
     gradient: {
       angle: 135,
       stops: [
@@ -230,7 +230,7 @@ function findLayer(id) {
 }
 
 function renderLayer(layer) {
-  let el = document.querySelector(`[data-lid="${layer.id}"]`);
+  let el = document.querySelector(`.design-layer[data-lid="${layer.id}"]`);
   const isNew = !el;
 
   if (isNew) {
@@ -257,7 +257,10 @@ function renderLayer(layer) {
       el.appendChild(img);
     }
     const img = el.querySelector('img');
-    if (img) img.style.width = (layer.imgSize || 100) + '%';
+    if (img) {
+      img.style.width = (layer.imgSize || 100) + '%';
+      img.style.height = (layer.imgSize || 100) + '%';
+    }
     applyImageFilters(el, layer);
   } else if (layer.type === 'text') {
     el.classList.add('text-layer');
@@ -399,7 +402,7 @@ function toggleLock(id = State.selectedId) {
   const layer = findLayer(id);
   if (!layer) return;
   layer.locked = !layer.locked;
-  const el = document.querySelector(`[data-lid="${layer.id}"]`);
+  const el = document.querySelector(`.design-layer[data-lid="${layer.id}"]`);
   if (el) {
     el.classList.toggle('locked-layer', layer.locked);
     const contentEl = el.querySelector('.text-content');
@@ -417,7 +420,7 @@ function toggleLock(id = State.selectedId) {
 }
 
 function deleteLayer(id) {
-  const el = document.querySelector(`[data-lid="${id}"]`);
+  const el = document.querySelector(`.design-layer[data-lid="${id}"]`);
   if (el) el.remove();
   State.layers = State.layers.filter(l => l.id !== id);
   if (State.selectedId === id) deselectAll();
@@ -429,7 +432,7 @@ function selectLayer(id) {
   State.selectedId = id;
   // Visual highlight
   document.querySelectorAll('.design-layer').forEach(el => el.classList.remove('selected-layer'));
-  const el = document.querySelector(`[data-lid="${id}"]`);
+  const el = document.querySelector(`.design-layer[data-lid="${id}"]`);
   if (el) el.classList.add('selected-layer');
 
   // Update layers list
@@ -449,7 +452,7 @@ function selectLayer(id) {
     switchPanel('text');
     
     // If it's a text layer, make sure content is synced
-    const contentEl = document.querySelector(`[data-lid="${layer.id}"] .text-content`);
+    const contentEl = document.querySelector(`.design-layer[data-lid="${layer.id}"] .text-content`);
     if (contentEl) $('textContent').value = contentEl.textContent;
     
     // Toggle Text Panel sections
@@ -491,10 +494,17 @@ function updateFloatingBar(layer) {
   if (!bar) {
     bar = document.createElement('div');
     bar.className = 'layer-float-bar';
+    
+    // Prevent dragging when interacting with the floating bar
+    const stopProp = e => e.stopPropagation();
+    bar.addEventListener('mousedown', stopProp);
+    bar.addEventListener('touchstart', stopProp);
+    bar.addEventListener('touchend', stopProp);
+    
     document.body.appendChild(bar); // Will move to correct layer in render
   }
   
-  const el = document.querySelector(`[data-lid="${layer.id}"]`);
+  const el = document.querySelector(`.design-layer[data-lid="${layer.id}"]`);
   if (!el) return bar.remove();
   
   // Attach the bar to the layer's element
@@ -593,7 +603,7 @@ function updateLayerCount() {
 function reorderZIndex() {
   State.layers.forEach((l, i) => {
     l.zIndex = i + 1;
-    const el = document.querySelector(`[data-lid="${l.id}"]`);
+    const el = document.querySelector(`.design-layer[data-lid="${l.id}"]`);
     if (el) el.style.zIndex = l.zIndex;
   });
 }
@@ -688,6 +698,7 @@ function attachLayerEvents(el, layer) {
         layer.textProps.content = text;
         if (State.selectedId === layer.id) {
           $('textContent').value = text;
+          State.textProps.content = text; // Keep global state in sync
         }
         // Don't call updateTextLayer here as it would call applyTextStyle and reset cursor
         refreshLayersList();
@@ -721,7 +732,7 @@ function attachLayerEvents(el, layer) {
 
 // Resize handles
 function attachResizeHandles(layer) {
-  const el = document.querySelector(`[data-lid="${layer.id}"]`);
+  const el = document.querySelector(`.design-layer[data-lid="${layer.id}"]`);
   if (!el) return;
 
   // Remove old handles
@@ -808,7 +819,7 @@ function attachResizeHandles(layer) {
 }
 
 function clearResizeHandles(id) {
-  const el = document.querySelector(`[data-lid="${id}"]`);
+  const el = document.querySelector(`.design-layer[data-lid="${id}"]`);
   if (el) el.querySelectorAll('.resize-handle').forEach(h => h.remove());
 }
 
@@ -1035,7 +1046,7 @@ setupUploadZone($('imgUploadZone'), $('imgInput'), src => {
     }
   });
   // Create img element
-  const el = document.querySelector(`[data-lid="${layer.id}"]`);
+  const el = document.querySelector(`.design-layer[data-lid="${layer.id}"]`);
   if (el && !el.querySelector('img')) {
     const img = document.createElement('img');
     img.src = src;
@@ -1045,48 +1056,97 @@ setupUploadZone($('imgUploadZone'), $('imgInput'), src => {
   switchPanel('image');
 });
 
-const filterSliders = [
-  ['imgBrightness', 'brightness', 'imgBrightnessVal', v => v],
-  ['imgContrast',   'contrast',   'imgContrastVal',   v => v],
-  ['imgDarkness',   'darkness',   'imgDarknessVal',   v => v],
-  ['imgBlur',       'blur',       'imgBlurVal',       v => v],
-  ['imgOpacity',    'opacity',    'imgOpacityVal',    v => v],
-  ['imgSepia',      'sepia',      'imgSepiaVal',      v => v],
-  ['imgWarmth',     'warmth',     'imgWarmthVal',     v => v],
-  ['imgTint',       'tint',       'imgTintVal',       v => v],
-  ['imgHue',        'hue',        'imgHueVal',        v => v + '°'],
-  ['imgSaturation', 'saturation', 'imgSaturationVal', v => v],
-  ['imgSize',       'imgSize',    'imgSizeVal',       v => v + '%'],
-];
-filterSliders.forEach(([sliderId, prop, valId, fmt]) => {
-  const slider = $(sliderId);
+let activeFilterProp = 'brightness';
+
+const filterConfigs = {
+  brightness: { min: 0, max: 200, def: 100, label: 'Brightness', fmt: v => v },
+  contrast:   { min: 0, max: 200, def: 100, label: 'Contrast', fmt: v => v },
+  darkness:   { min: 0, max: 100, def: 0,   label: 'Darkness', fmt: v => v },
+  blur:       { min: 0, max: 20,  def: 0,   label: 'Blur', fmt: v => v, step: 0.5 },
+  opacity:    { min: 0, max: 100, def: 100, label: 'Opacity', fmt: v => v },
+  sepia:      { min: 0, max: 100, def: 0,   label: 'Sepia', fmt: v => v },
+  warmth:     { min: -100, max: 100, def: 0,label: 'Warmth', fmt: v => v },
+  tint:       { min: -100, max: 100, def: 0,label: 'Tint', fmt: v => v },
+  hue:        { min: 0, max: 360, def: 0,   label: 'Hue', fmt: v => v + '°' },
+  saturation: { min: 0, max: 200, def: 100, label: 'Saturation', fmt: v => v },
+  imgSize:    { min: 10, max: 500, def: 100,label: 'Image Size', fmt: v => v + '%' },
+};
+
+function setActiveFilter(prop) {
+  activeFilterProp = prop;
+  const config = filterConfigs[prop];
+  
+  // Update buttons
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.filter === prop);
+  });
+  
+  // Update slider UI
+  $('masterSliderLabel').textContent = config.label;
+  const slider = $('masterFilterSlider');
   if (!slider) return;
-  slider.addEventListener('input', e => {
-    $(valId).textContent = fmt(e.target.value);
+  slider.min = config.min;
+  slider.max = config.max;
+  slider.step = config.step || 1;
+  
+  // Sync value from layer or default
+  const layer = findLayer(State.selectedId);
+  let val = config.def;
+  if (layer && layer.type === 'image') {
+    if (prop === 'imgSize') {
+      val = layer.imgSize ?? 100;
+    } else {
+      val = (layer.filters || {})[prop] ?? config.def;
+    }
+  }
+  slider.value = val;
+  $('masterFilterVal').textContent = config.fmt(val);
+}
+
+// Listen to filter button clicks
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => setActiveFilter(btn.dataset.filter));
+});
+
+// Listen to master slider
+const masterSlider = $('masterFilterSlider');
+if (masterSlider) {
+  masterSlider.addEventListener('input', e => {
+    const config = filterConfigs[activeFilterProp];
+    $('masterFilterVal').textContent = config.fmt(e.target.value);
+    
     const layer = findLayer(State.selectedId);
     if (!layer || layer.type !== 'image') return;
-    if (prop === 'imgSize') {
+    const el = document.querySelector(`.design-layer[data-lid="${layer.id}"]`);
+    if (!el) return;
+    
+    if (activeFilterProp === 'imgSize') {
+      const oldSize = layer.imgSize || 100;
       layer.imgSize = +e.target.value;
-      const img = el.querySelector('img');
-      if (img) img.style.width = layer.imgSize + '%';
+      const ratio = layer.imgSize / oldSize;
+      
+      const cx = layer.x + layer.w / 2;
+      const cy = layer.y + layer.h / 2;
+      
+      layer.w = layer.w * ratio;
+      layer.h = layer.h * ratio;
+      layer.x = cx - layer.w / 2;
+      layer.y = cy - layer.h / 2;
+      
+      el.style.width = layer.w + 'px';
+      el.style.height = layer.h + 'px';
+      el.style.left = layer.x + 'px';
+      el.style.top = layer.y + 'px';
     } else {
       layer.filters = layer.filters || {};
-      layer.filters[prop] = +e.target.value;
+      layer.filters[activeFilterProp] = +e.target.value;
       applyImageFilters(el, layer);
     }
   });
-});
+}
 
 function loadImageFilters(layer) {
-  const f = layer.filters || {};
-  filterSliders.forEach(([sliderId, prop, valId, fmt]) => {
-    const slider = $(sliderId);
-    const def = prop === 'brightness' || prop === 'contrast' || prop === 'saturation' ? 100 : 0;
-    if (slider) {
-      slider.value = f[prop] ?? def;
-      $(valId).textContent = fmt(slider.value);
-    }
-  });
+  setActiveFilter(activeFilterProp);
 }
 
 $('btnResetFilters').addEventListener('click', () => {
@@ -1094,7 +1154,7 @@ $('btnResetFilters').addEventListener('click', () => {
   if (!layer || layer.type !== 'image') return;
   layer.filters = { brightness: 100, contrast: 100, darkness: 0, blur: 0, opacity: 100, sepia: 0, warmth: 0, tint: 0, hue: 0, saturation: 100 };
   loadImageFilters(layer);
-  const el = document.querySelector(`[data-lid="${layer.id}"]`);
+  const el = document.querySelector(`.design-layer[data-lid="${layer.id}"]`);
   if (el) applyImageFilters(el, layer);
   showToast('Filters reset');
 });
@@ -1104,7 +1164,7 @@ $('btnResetCrop').addEventListener('click', () => {
   if (!layer || layer.type !== 'image') return;
   layer.crop = { t: 0, r: 0, b: 0, l: 0 };
   loadCropProps(layer);
-  const el = document.querySelector(`[data-lid="${layer.id}"]`);
+  const el = document.querySelector(`.design-layer[data-lid="${layer.id}"]`);
   if (el) applyImageFilters(el, layer);
 });
 
@@ -1122,7 +1182,7 @@ function loadCropProps(layer) {
     if (!layer || layer.type !== 'image') return;
     if (!layer.crop) layer.crop = { t: 0, r: 0, b: 0, l: 0 };
     layer.crop[side[0].toLowerCase()] = +e.target.value;
-    const el = document.querySelector(`[data-lid="${layer.id}"]`);
+    const el = document.querySelector(`.design-layer[data-lid="${layer.id}"]`);
     if (el) applyImageFilters(el, layer);
   });
 });
@@ -1139,6 +1199,95 @@ $('btnAddText').addEventListener('click', () => {
   loadTextProps(layer);
   switchPanel('text');
   setTimeout(() => $('textContent').focus(), 50);
+});
+
+document.querySelectorAll('.text-template-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const t = btn.dataset.template;
+    const props = {
+      content: 'New Text',
+      fontFamily: 'Inter, sans-serif',
+      fontSize: 32,
+      colorType: 'solid',
+      color: '#ffffff',
+      bold: false,
+      italic: false,
+      align: 'center',
+      lineHeight: 1.2,
+      letterSpacing: 0,
+      color2: '#ec4899',
+      bgEnabled: false,
+      bgColor: '#000000',
+      bgOpacity: 50
+    };
+    if (t === 'montserrat') {
+      props.content = 'ELEGANT MODERN';
+      props.fontFamily = "'Montserrat', sans-serif";
+      props.fontSize = 48;
+      props.bold = true;
+      props.letterSpacing = 2;
+    } else if (t === 'oswald') {
+      props.content = 'STRONG HEADER';
+      props.fontFamily = "'Oswald', sans-serif";
+      props.fontSize = 56;
+      props.bold = true;
+      props.color = '#eab308';
+      props.letterSpacing = 1;
+    } else if (t === 'bebas') {
+      props.content = 'MASSIVE IMPACT';
+      props.fontFamily = "'Bebas Neue', sans-serif";
+      props.fontSize = 72;
+      props.color = '#ef4444';
+      props.letterSpacing = 2;
+    } else if (t === 'playfair') {
+      props.content = 'Sophisticated';
+      props.fontFamily = "'Playfair Display', serif";
+      props.fontSize = 56;
+      props.italic = true;
+      props.bold = true;
+      props.color = '#d4af37';
+    } else if (t === 'cinzel') {
+      props.content = 'CINEMATIC';
+      props.fontFamily = "'Cinzel', serif";
+      props.fontSize = 52;
+      props.colorType = 'gradient';
+      props.color = '#fbbf24';
+      props.color2 = '#d97706';
+      props.bold = true;
+    } else if (t === 'dancing') {
+      props.content = 'Beautiful Script';
+      props.fontFamily = "'Dancing Script', cursive";
+      props.fontSize = 64;
+      props.color = '#ec4899';
+    } else if (t === 'pacifico') {
+      props.content = 'Laid-back Fun';
+      props.fontFamily = "'Pacifico', cursive";
+      props.fontSize = 56;
+      props.color = '#06b6d4';
+    } else if (t === 'righteous') {
+      props.content = 'FUTURISTIC';
+      props.fontFamily = "'Righteous', cursive";
+      props.fontSize = 56;
+      props.color = '#8b5cf6';
+    }
+    
+    const selectedLayer = findLayer(State.selectedId);
+    if (selectedLayer && selectedLayer.type === 'text') {
+      const oldContent = selectedLayer.textProps.content;
+      selectedLayer.textProps = props;
+      selectedLayer.textProps.content = oldContent;
+      const el = document.querySelector(`.design-layer[data-lid="${selectedLayer.id}"]`);
+      if (el) applyTextStyle(el, selectedLayer);
+      loadTextProps(selectedLayer);
+    } else {
+      const layer = createLayer('text', {
+        x: 50, y: 50, w: 300, h: 80,
+        textProps: props,
+      });
+      loadTextProps(layer);
+      switchPanel('text');
+    }
+  });
 });
 
 function loadTextProps(layer) {
@@ -1196,7 +1345,7 @@ function updateTextLayer() {
   if (!layer || layer.type !== 'text') return;
   // Use a deep copy to avoid direct reference issues if needed, but simple assign is mostly ok here
   layer.textProps = { ...State.textProps };
-  const el = document.querySelector(`[data-lid="${layer.id}"]`);
+  const el = document.querySelector(`.design-layer[data-lid="${layer.id}"]`);
   if (el) applyTextStyle(el, layer);
   refreshLayersList();
 }
@@ -1311,7 +1460,7 @@ $('btnDeselectText').addEventListener('click', () => {
     if (!layer || layer.locked) return;
     const prop = { layerX:'x', layerY:'y', layerW:'w', layerH:'h' }[id];
     layer[prop] = +e.target.value;
-    const el = document.querySelector(`[data-lid="${layer.id}"]`);
+    const el = document.querySelector(`.design-layer[data-lid="${layer.id}"]`);
     if (el) {
       el.style.left   = layer.x + 'px';
       el.style.top    = layer.y + 'px';
@@ -1326,7 +1475,7 @@ $('layerRotate').addEventListener('input', e => {
   if (!layer) return;
   layer.rotate = +e.target.value;
   $('layerRotateVal').textContent = e.target.value + '°';
-  const el = document.querySelector(`[data-lid="${layer.id}"]`);
+  const el = document.querySelector(`.design-layer[data-lid="${layer.id}"]`);
   if (el) el.style.transform = `rotate(${layer.rotate}deg)`;
 });
 
@@ -1533,7 +1682,10 @@ document.querySelector('.canvas-area').addEventListener('wheel', e => {
 async function exportImage(format) {
   showToast('Preparing export…');
 
-  const ed = EXPORT_DIMS[State.ratio];
+  const baseEd = State.mode === 'post' ? EXPORT_DIMS.post[State.ratio] : EXPORT_DIMS.cover[State.ratio];
+  
+  // Multiply dimensions by 2 for ultra-high quality export
+  const ed = { w: baseEd.w * 2, h: baseEd.h * 2 };
   const scale = ed.w / State.canvasW;
 
   const cvs = exportCanvas;
@@ -1556,7 +1708,7 @@ async function exportImage(format) {
     ctx.rotate(layer.rotate * Math.PI / 180);
 
     if (layer.type === 'image') {
-      const img = document.querySelector(`[data-lid="${layer.id}"] img`);
+      const img = document.querySelector(`.design-layer[data-lid="${layer.id}"] img`);
       if (!img) { ctx.restore(); continue; }
 
       const f = layer.filters || {};
@@ -1605,7 +1757,7 @@ async function exportImage(format) {
 
   // Download
   const mime = format === 'jpg' ? 'image/jpeg' : 'image/png';
-  const quality = format === 'jpg' ? 0.92 : undefined;
+  const quality = format === 'jpg' ? 1.0 : undefined;
   const url = cvs.toDataURL(mime, quality);
   const a = document.createElement('a');
   a.href = url;
@@ -1788,7 +1940,7 @@ document.addEventListener('keydown', e => {
     if (e.key === 'ArrowDown')  layer.y += step;
     if (e.key === 'ArrowLeft')  layer.x -= step;
     if (e.key === 'ArrowRight') layer.x += step;
-    const el = document.querySelector(`[data-lid="${layer.id}"]`);
+    const el = document.querySelector(`.design-layer[data-lid="${layer.id}"]`);
     if (el) { el.style.left = layer.x + 'px'; el.style.top = layer.y + 'px'; }
     showLayerControls(layer);
   }
@@ -1827,9 +1979,49 @@ function init() {
   if (btnMenu) {
     btnMenu.addEventListener('click', () => {
       const sidebar = $('leftSidebar');
-      sidebar.classList.toggle('open');
+      sidebar.classList.remove('open');
+      sidebar.classList.toggle('hide-tabs');
     });
   }
+
+  // Mobile drag handles
+  let dragStartY = 0;
+  
+  const setupDragHandle = (handleId, onDragDown) => {
+    const handle = $(handleId);
+    if (!handle) return;
+    handle.addEventListener('touchstart', e => {
+      dragStartY = e.touches[0].clientY;
+    }, {passive: true});
+    handle.addEventListener('touchend', e => {
+      const dragEndY = e.changedTouches[0].clientY;
+      if (dragEndY - dragStartY > 30) {
+        onDragDown();
+      }
+    });
+    // Mouse support
+    let isDragging = false;
+    handle.addEventListener('mousedown', e => {
+      isDragging = true;
+      dragStartY = e.clientY;
+    });
+    document.addEventListener('mouseup', e => {
+      if (!isDragging) return;
+      isDragging = false;
+      const dragEndY = e.clientY;
+      if (dragEndY - dragStartY > 30) {
+        onDragDown();
+      }
+    });
+  };
+
+  setupDragHandle('tabsDragHandle', () => {
+    $('leftSidebar').classList.add('hide-tabs');
+  });
+
+  setupDragHandle('panelDragHandle', () => {
+    $('leftSidebar').classList.remove('open');
+  });
 
   // Global Drop Zone
   const gdz = $('globalDropZone');
@@ -1881,6 +2073,19 @@ function init() {
 window.addEventListener('resize', () => {
   clearTimeout(window._resizeTimer);
   window._resizeTimer = setTimeout(fitZoom, 150);
+});
+
+$('btnThemeToggle').addEventListener('click', () => {
+  const body = document.body;
+  if (body.getAttribute('data-theme') === 'light') {
+    body.removeAttribute('data-theme');
+    $('iconThemeMoon').style.display = 'block';
+    $('iconThemeSun').style.display = 'none';
+  } else {
+    body.setAttribute('data-theme', 'light');
+    $('iconThemeMoon').style.display = 'none';
+    $('iconThemeSun').style.display = 'block';
+  }
 });
 
 init();
