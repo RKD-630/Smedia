@@ -623,7 +623,6 @@
                 document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
                 tab.classList.add('active');
                 
-                sidebar.style.height = '';
                 sidebar.classList.add('active');
                 document.querySelectorAll('.sidebar-right .control-section').forEach(sec => sec.classList.remove('active'));
                 const targetId = tab.getAttribute('data-tab');
@@ -639,7 +638,6 @@
                 sidebar.classList.remove('active');
                 document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
             } else {
-                sidebar.style.height = '';
                 sidebar.classList.add('active');
                 const activeSection = document.querySelector('.sidebar-right .control-section.active');
                 if (activeSection) {
