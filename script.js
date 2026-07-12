@@ -3,6 +3,7 @@
         let ctx = canvas.getContext('2d');
         let currentPlatform = 'facebook';
         let bgImage = null;
+        let imageAlign = 'center';
         let saveFormat = 'png';
         let textSettings = {
             bold: false,
@@ -15,32 +16,52 @@
             shadowOffsetX: 4,
             shadowOffsetY: 4,
             x: null,
-            y: null
+            y: null,
+            contrast: 100,
+            brightness: 100,
+            darkness: 0,
+            blur: 0,
+            sepia: 0,
+            warmth: 0,
+            tint: 0,
+            hue: 0,
+            rotate: 0,
+            hd: 100
         };
+        let adjustTarget = 'image';
         
         let selectedItem = null;
         let isDragging = false;
+        let isResizing = false;
         let dragOffsetX = 0;
         let dragOffsetY = 0;
+        let resizeStartDist = 0;
+        let resizeInitialSize = 0;
+        let resizeCenterX = 0;
+        let resizeCenterY = 0;
 
         // Initialize
         window.onload = function() {
             drawCanvas();
         };
 
-        // Set platform and resize canvas
-        function setPlatform(platform, width, height) {
-            currentPlatform = platform;
+        // Set platform ratio and resize canvas
+        function setPlatformRatio(btn, width, height) {
             canvas.width = width;
             canvas.height = height;
             
-            showToast(`${platform} canvas: ${width}x${height}`);
+            document.querySelectorAll('.ratio-btn').forEach(b => b.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+            
+            showToast(`Canvas size: ${width}x${height}`);
             drawCanvas();
         }
 
-        // Set save format
-        function setFormat(format) {
+        // Set save format via button
+        function setFormatBtn(btn, format) {
             saveFormat = format;
+            document.querySelectorAll('.format-btn').forEach(b => b.classList.remove('active'));
+            if (btn) btn.classList.add('active');
             showToast(`Format set to ${format.toUpperCase()}`);
         }
 
@@ -111,11 +132,13 @@
             const warmth = document.getElementById('warmth').value;
             const tint = document.getElementById('tint').value;
             const hue = document.getElementById('hue').value;
+            const hd = document.getElementById('hd').value || 100;
             
             // Apply filters
             ctx.filter = `
                 contrast(${contrast}%)
                 brightness(${brightness - darkness}%)
+                saturate(${hd}%)
                 blur(${blur}px)
                 opacity(${opacity})
                 sepia(${sepia}%)
@@ -125,14 +148,60 @@
             // Calculate dimensions
             const imgWidth = bgImage.width * size;
             const imgHeight = bgImage.height * size;
-            const x = (canvas.width - imgWidth) / 2;
+            let x;
+            if (imageAlign === 'left') {
+                x = 0;
+            } else if (imageAlign === 'right') {
+                x = canvas.width - imgWidth;
+            } else {
+                x = (canvas.width - imgWidth) / 2;
+            }
             const y = (canvas.height - imgHeight) / 2;
             
             // Draw image
+            const imageRotate = document.getElementById('rotate').value || 0;
             ctx.globalAlpha = opacity;
-            ctx.drawImage(bgImage, x, y, imgWidth, imgHeight);
+            
+            ctx.save();
+            ctx.translate(x + imgWidth / 2, y + imgHeight / 2);
+            ctx.rotate(imageRotate * Math.PI / 180);
+            
+            ctx.drawImage(bgImage, -imgWidth / 2, -imgHeight / 2, imgWidth, imgHeight);
+            
             ctx.globalAlpha = 1;
             ctx.filter = 'none';
+            
+            // Draw selection box and delete button while rotated
+            if (selectedItem === 'image') {
+                ctx.strokeStyle = '#3b82f6';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                ctx.strokeRect(-imgWidth / 2 - 5, -imgHeight / 2 - 5, imgWidth + 10, imgHeight + 10);
+                ctx.setLineDash([]);
+                
+                ctx.fillStyle = '#ef4444';
+                ctx.beginPath();
+                ctx.arc(imgWidth / 2 + 5, -imgHeight / 2 - 5, 15, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 16px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('X', imgWidth / 2 + 5, -imgHeight / 2 - 5);
+                
+                // Resize button
+                ctx.fillStyle = '#10b981';
+                ctx.beginPath();
+                ctx.arc(imgWidth / 2 + 5, imgHeight / 2 + 5, 15, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 16px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('⤡', imgWidth / 2 + 5, imgHeight / 2 + 5);
+            }
+            
+            ctx.restore();
             
             // Apply warmth and tint overlays
             if (warmth !== 0 || tint !== 0) {
@@ -151,25 +220,6 @@
                 }
                 ctx.globalCompositeOperation = 'source-over';
             }
-            
-            // Draw selection box and delete button
-            if (selectedItem === 'image') {
-                ctx.strokeStyle = '#3b82f6';
-                ctx.lineWidth = 2;
-                ctx.setLineDash([5, 5]);
-                ctx.strokeRect(x - 5, y - 5, imgWidth + 10, imgHeight + 10);
-                ctx.setLineDash([]);
-                
-                ctx.fillStyle = '#ef4444';
-                ctx.beginPath();
-                ctx.arc(x + imgWidth + 5, y - 5, 15, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.fillStyle = 'white';
-                ctx.font = 'bold 16px Arial';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText('X', x + imgWidth + 5, y - 5);
-            }
         }
 
         // Draw text
@@ -181,10 +231,6 @@
             const fontSize = document.getElementById('textSize').value;
             const color = document.getElementById('textColor').value;
             
-            ctx.font = `${textSettings.italic ? 'italic' : ''} ${textSettings.bold ? 'bold' : ''} ${fontSize}px ${fontFamily}`;
-            ctx.textAlign = textSettings.align;
-            ctx.textBaseline = 'middle';
-            
             const defaultX = textSettings.align === 'left' ? 50 : 
                       textSettings.align === 'right' ? canvas.width - 50 : 
                       canvas.width / 2;
@@ -192,17 +238,26 @@
             const x = textSettings.x !== null ? textSettings.x : defaultX;
             const y = textSettings.y !== null ? textSettings.y : defaultY;
             
+            const offCanvas = document.createElement('canvas');
+            offCanvas.width = canvas.width;
+            offCanvas.height = canvas.height;
+            const offCtx = offCanvas.getContext('2d');
+            
+            offCtx.font = `${textSettings.italic ? 'italic' : ''} ${textSettings.bold ? 'bold' : ''} ${fontSize}px ${fontFamily}`;
+            offCtx.textAlign = textSettings.align;
+            offCtx.textBaseline = 'middle';
+            
             // Apply shadow if exists
             if (textSettings.shadowBlur > 0) {
-                ctx.shadowColor = textSettings.shadowColor;
-                ctx.shadowBlur = textSettings.shadowBlur;
-                ctx.shadowOffsetX = textSettings.shadowOffsetX;
-                ctx.shadowOffsetY = textSettings.shadowOffsetY;
+                offCtx.shadowColor = textSettings.shadowColor;
+                offCtx.shadowBlur = textSettings.shadowBlur;
+                offCtx.shadowOffsetX = textSettings.shadowOffsetX;
+                offCtx.shadowOffsetY = textSettings.shadowOffsetY;
             }
             
             // Draw text background if enabled
             if (textSettings.bgEnabled) {
-                const metrics = ctx.measureText(text);
+                const metrics = offCtx.measureText(text);
                 const bgPadding = 20;
                 const bgHeight = parseInt(fontSize) + bgPadding;
                 const bgWidth = metrics.width + bgPadding * 2;
@@ -210,61 +265,125 @@
                            textSettings.align === 'right' ? x - bgWidth + bgPadding :
                            x - bgWidth / 2;
                 
-                ctx.fillStyle = document.getElementById('textBgColor').value;
-                ctx.fillRect(bgX, y - bgHeight / 2, bgWidth, bgHeight);
+                offCtx.fillStyle = document.getElementById('textBgColor').value;
+                offCtx.fillRect(bgX, y - bgHeight / 2, bgWidth, bgHeight);
             }
             
             // Draw text
-            ctx.fillStyle = color;
-            ctx.fillText(text, x, y);
+            offCtx.fillStyle = color;
+            offCtx.fillText(text, x, y);
             
             // Reset shadow
-            ctx.shadowColor = 'transparent';
-            ctx.shadowBlur = 0;
-            ctx.shadowOffsetX = 0;
-            ctx.shadowOffsetY = 0;
+            offCtx.shadowColor = 'transparent';
+            offCtx.shadowBlur = 0;
+            offCtx.shadowOffsetX = 0;
+            offCtx.shadowOffsetY = 0;
             
             // Draw underline if enabled
-            let metrics = ctx.measureText(text);
+            let metrics = offCtx.measureText(text);
             if (textSettings.underline) {
                 const underlineY = y + parseInt(fontSize) / 2 + 5;
                 const underlineX = textSettings.align === 'left' ? x :
                                   textSettings.align === 'right' ? x - metrics.width :
                                   x - metrics.width / 2;
                 
-                ctx.beginPath();
-                ctx.moveTo(underlineX, underlineY);
-                ctx.lineTo(underlineX + metrics.width, underlineY);
-                ctx.strokeStyle = color;
-                ctx.lineWidth = 3;
-                ctx.stroke();
+                offCtx.beginPath();
+                offCtx.moveTo(underlineX, underlineY);
+                offCtx.lineTo(underlineX + metrics.width, underlineY);
+                offCtx.strokeStyle = color;
+                offCtx.lineWidth = 3;
+                offCtx.stroke();
             }
+            
+            // Apply text warmth and tint overlays
+            const tWarmth = textSettings.warmth || 0;
+            const tTint = textSettings.tint || 0;
+            if (tWarmth !== 0 || tTint !== 0) {
+                offCtx.globalCompositeOperation = 'source-atop';
+                if (tWarmth > 0) {
+                    offCtx.fillStyle = `rgba(255, 160, 60, ${Math.abs(tWarmth) / 200})`;
+                    offCtx.fillRect(0, 0, canvas.width, canvas.height);
+                } else if (tWarmth < 0) {
+                    offCtx.fillStyle = `rgba(60, 160, 255, ${Math.abs(tWarmth) / 200})`;
+                    offCtx.fillRect(0, 0, canvas.width, canvas.height);
+                }
+                if (tTint !== 0) {
+                    offCtx.fillStyle = `rgba(180, 60, 255, ${Math.abs(tTint) / 200})`;
+                    offCtx.fillRect(0, 0, canvas.width, canvas.height);
+                }
+                offCtx.globalCompositeOperation = 'source-over';
+            }
+            
+            // Draw offscreen canvas to main canvas with filters
+            const tContrast = textSettings.contrast !== undefined ? textSettings.contrast : 100;
+            const tBrightness = textSettings.brightness !== undefined ? textSettings.brightness : 100;
+            const tDarkness = textSettings.darkness !== undefined ? textSettings.darkness : 0;
+            const tBlur = textSettings.blur !== undefined ? textSettings.blur : 0;
+            const tOpacity = textSettings.opacity !== undefined ? textSettings.opacity : 100;
+            const tSepia = textSettings.sepia !== undefined ? textSettings.sepia : 0;
+            const tHue = textSettings.hue !== undefined ? textSettings.hue : 0;
+            const tHd = textSettings.hd !== undefined ? textSettings.hd : 100;
+            
+            ctx.filter = `
+                contrast(${tContrast}%)
+                brightness(${tBrightness - tDarkness}%)
+                saturate(${tHd}%)
+                blur(${tBlur}px)
+                opacity(${tOpacity / 100})
+                sepia(${tSepia}%)
+                hue-rotate(${tHue}deg)
+            `;
+            
+            ctx.font = `${textSettings.italic ? 'italic' : ''} ${textSettings.bold ? 'bold' : ''} ${fontSize}px ${fontFamily}`;
+            const tWidth = ctx.measureText(text).width;
+            let tLeft = x;
+            if (textSettings.align === 'center') tLeft = x - tWidth / 2;
+            if (textSettings.align === 'right') tLeft = x - tWidth;
+            const tTop = y - parseInt(fontSize) / 2;
+            const tCenterX = tLeft + tWidth / 2;
+            const tCenterY = tTop + parseInt(fontSize) / 2;
+            
+            ctx.save();
+            ctx.translate(tCenterX, tCenterY);
+            ctx.rotate((textSettings.rotate || 0) * Math.PI / 180);
+            
+            ctx.drawImage(offCanvas, -tCenterX, -tCenterY);
+            ctx.filter = 'none';
             
             // Draw selection box and delete button
             if (selectedItem === 'text') {
-                const width = metrics.width;
+                const width = tWidth;
                 const height = parseInt(fontSize);
-                let left = x;
-                if (textSettings.align === 'center') left = x - width / 2;
-                if (textSettings.align === 'right') left = x - width;
-                const top = y - height / 2;
                 
                 ctx.strokeStyle = '#3b82f6';
                 ctx.lineWidth = 2;
                 ctx.setLineDash([5, 5]);
-                ctx.strokeRect(left - 10, top - 10, width + 20, height + 20);
+                ctx.strokeRect(-width/2 - 10, -height/2 - 10, width + 20, height + 20);
                 ctx.setLineDash([]);
                 
                 ctx.fillStyle = '#ef4444';
                 ctx.beginPath();
-                ctx.arc(left + width + 10, top - 10, 15, 0, Math.PI * 2);
+                ctx.arc(width/2 + 10, -height/2 - 10, 15, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.fillStyle = 'white';
                 ctx.font = 'bold 16px Arial';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText('X', left + width + 10, top - 10);
+                ctx.fillText('X', width/2 + 10, -height/2 - 10);
+                
+                // Resize button
+                ctx.fillStyle = '#10b981';
+                ctx.beginPath();
+                ctx.arc(width/2 + 10, height/2 + 10, 15, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 16px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('⤡', width/2 + 10, height/2 + 10);
             }
+            
+            ctx.restore();
         }
 
         // Apply text effect template
@@ -394,15 +513,13 @@
 
         // Update image adjustments
         function updateImageAdjustments() {
-            // Update value displays
-            document.getElementById('sizeValue').textContent = document.getElementById('imgSize').value + '%';
-            
             drawCanvas();
         }
 
         // Update text
         function updateText() {
-            document.getElementById('textSizeValue').textContent = document.getElementById('textSize').value + 'px';
+            const tsv = document.getElementById('textSizeValue');
+            if (tsv) tsv.textContent = document.getElementById('textSize').value + 'px';
             textSettings.shadowBlur = parseInt(document.getElementById('shadowBlur').value);
             document.getElementById('shadowBlurValue').textContent = textSettings.shadowBlur + 'px';
             drawCanvas();
@@ -415,12 +532,17 @@
             updateText();
         }
 
-        // Set text alignment
-        function setTextAlign(align) {
-            textSettings.align = align;
+        // Set alignment for image or text
+        function setAlignment(align) {
+            if (adjustTarget === 'image') {
+                imageAlign = align;
+            } else {
+                textSettings.align = align;
+                textSettings.x = null; // Reset x to allow default alignment
+            }
             document.querySelectorAll('.align-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById('align' + align.charAt(0).toUpperCase() + align.slice(1)).classList.add('active');
-            updateText();
+            drawCanvas();
         }
 
         // Toggle text background
@@ -489,19 +611,137 @@
         // Mobile bottom navigation tabs
         document.querySelectorAll('.nav-tab').forEach(tab => {
             tab.addEventListener('click', () => {
+                const sidebar = document.querySelector('.sidebar-right');
+                
+                if (tab.classList.contains('active')) {
+                    sidebar.classList.remove('active');
+                    tab.classList.remove('active');
+                    return;
+                }
+                
                 document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
                 tab.classList.add('active');
                 
-                document.querySelector('.sidebar-right').classList.remove('hidden');
+                sidebar.classList.add('active');
                 document.querySelectorAll('.sidebar-right .control-section').forEach(sec => sec.classList.remove('active'));
                 const targetId = tab.getAttribute('data-tab');
                 document.getElementById(targetId).classList.add('active');
             });
         });
 
-        document.getElementById('mobileSidebarToggle').addEventListener('click', () => {
-            document.querySelector('.sidebar-right').classList.add('hidden');
+        // Toggle sidebar from settings button
+        window.toggleSidebar = function() {
+            const sidebar = document.querySelector('.sidebar-right');
+            if (sidebar.classList.contains('active')) {
+                sidebar.classList.remove('active');
+                document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            } else {
+                sidebar.classList.add('active');
+                const activeSection = document.querySelector('.sidebar-right .control-section.active');
+                if (activeSection) {
+                    const tabId = activeSection.id;
+                    const tab = document.querySelector(`.nav-tab[data-tab="${tabId}"]`);
+                    if (tab) tab.classList.add('active');
+                } else {
+                    const firstTab = document.querySelector('.nav-tab');
+                    if (firstTab) firstTab.click();
+                }
+            }
+        };
+
+        // Zoom Logic
+        let currentZoom = 1;
+        window.setZoom = function(delta) {
+            currentZoom += delta;
+            if (currentZoom < 0.2) currentZoom = 0.2;
+            if (currentZoom > 5) currentZoom = 5;
+            
+            const display = document.getElementById('zoomLevelDisplay');
+            if (display) {
+                display.textContent = Math.round(currentZoom * 100) + '%';
+            }
+            
+            const wrapper = document.getElementById('canvasWrapper');
+            if (wrapper) {
+                wrapper.style.zoom = currentZoom;
+            }
+        };
+
+        // Full Screen Toggle
+        window.toggleFullScreen = function() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.log(`Error attempting to enable fullscreen: ${err.message}`);
+                });
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        };
+
+        document.addEventListener('fullscreenchange', () => {
+            const icon = document.getElementById('fullscreenIcon');
+            if (document.fullscreenElement) {
+                if (icon) icon.textContent = '✖';
+            } else {
+                if (icon) icon.textContent = '⛶';
+            }
         });
+
+        // Drag down to hide sidebar
+        let sidebarDragStartY = 0;
+        let sidebarCurrentY = 0;
+        let isSidebarDragging = false;
+        const sidebarEl = document.querySelector('.sidebar-right');
+        const dragHandleEl = document.getElementById('dragHandle');
+
+        if (sidebarEl && dragHandleEl) {
+            const dragStart = (e, coords) => {
+                isSidebarDragging = true;
+                const isRight = sidebarEl.classList.contains('position-right');
+                sidebarDragStartY = isRight ? coords.clientX : coords.clientY;
+                sidebarEl.style.transition = 'none';
+            };
+
+            const dragMove = (e, coords) => {
+                if (!isSidebarDragging) return;
+                const isRight = sidebarEl.classList.contains('position-right');
+                const currentPos = isRight ? coords.clientX : coords.clientY;
+                const delta = currentPos - sidebarDragStartY;
+                if (delta > 0) {
+                    sidebarCurrentY = delta;
+                    if (isRight) {
+                        sidebarEl.style.transform = `translateX(${delta}px)`;
+                    } else {
+                        sidebarEl.style.transform = `translateY(${delta}px)`;
+                    }
+                }
+            };
+
+            const dragEnd = () => {
+                if (!isSidebarDragging) return;
+                isSidebarDragging = false;
+                sidebarEl.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+                if (sidebarCurrentY > 50) {
+                    sidebarEl.classList.remove('active');
+                    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+                }
+                sidebarEl.style.transform = '';
+                sidebarCurrentY = 0;
+            };
+
+            // Touch events
+            dragHandleEl.addEventListener('touchstart', (e) => dragStart(e, e.touches[0]), { passive: true });
+            dragHandleEl.addEventListener('touchmove', (e) => dragMove(e, e.touches[0]), { passive: true });
+            dragHandleEl.addEventListener('touchend', dragEnd);
+
+            // Mouse events
+            dragHandleEl.addEventListener('mousedown', (e) => dragStart(e, e));
+            document.addEventListener('mousemove', (e) => { if (isSidebarDragging) dragMove(e, e); });
+            document.addEventListener('mouseup', dragEnd);
+        }
+
 
         // Dynamic Select Width Adjustment
         function adjustSelectWidth(select) {
@@ -548,6 +788,13 @@
         
         // Master Slider Logic for Image Adjustments
         const adjustConfig = {
+            size: {
+                label: 'Size',
+                get min() { return adjustTarget === 'image' ? 0 : 12; },
+                get max() { return adjustTarget === 'image' ? 200 : 120; },
+                get suffix() { return adjustTarget === 'image' ? '%' : 'px'; },
+                get slider() { return adjustTarget === 'image' ? document.getElementById('imgSize') : document.getElementById('textSize'); }
+            },
             contrast: { label: 'Contrast', min: 0, max: 200, slider: document.getElementById('contrast'), suffix: '%' },
             brightness: { label: 'Brightness', min: 0, max: 200, slider: document.getElementById('brightness'), suffix: '%' },
             darkness: { label: 'Darkness', min: 0, max: 100, slider: document.getElementById('darkness'), suffix: '%' },
@@ -556,13 +803,40 @@
             sepia: { label: 'Sepia', min: 0, max: 100, slider: document.getElementById('sepia'), suffix: '%' },
             warmth: { label: 'Warmth', min: -100, max: 100, slider: document.getElementById('warmth'), suffix: '' },
             tint: { label: 'Tint', min: -100, max: 100, slider: document.getElementById('tint'), suffix: '' },
-            hue: { label: 'Hue Rotate', min: 0, max: 360, slider: document.getElementById('hue'), suffix: '°' }
+            hue: { label: 'Hue', min: 0, max: 360, slider: document.getElementById('hue'), suffix: '°' },
+            rotate: { label: 'Rotate', min: 0, max: 360, slider: document.getElementById('rotate'), suffix: '°' },
+            hd: { label: 'HD Quality', min: 0, max: 200, slider: document.getElementById('hd'), suffix: '%' }
         };
 
         let activeAdjustment = 'contrast';
         const masterAdjustSlider = document.getElementById('masterAdjustSlider');
         const masterAdjustLabel = document.getElementById('masterAdjustLabel');
         const masterAdjustValue = document.getElementById('masterAdjustValue');
+        
+        function setAdjustTarget(target) {
+            adjustTarget = target;
+            document.getElementById('targetImgBtn').classList.toggle('active', target === 'image');
+            document.getElementById('targetTxtBtn').classList.toggle('active', target === 'text');
+            document.getElementById('targetImgBtn').style.background = target === 'image' ? 'var(--accent-color)' : 'transparent';
+            document.getElementById('targetImgBtn').style.color = target === 'image' ? 'white' : 'var(--text-primary)';
+            document.getElementById('targetTxtBtn').style.background = target === 'text' ? 'var(--accent-color)' : 'transparent';
+            document.getElementById('targetTxtBtn').style.color = target === 'text' ? 'white' : 'var(--text-primary)';
+            
+            // Sync alignment buttons
+            const currentAlign = target === 'image' ? imageAlign : textSettings.align;
+            document.querySelectorAll('.align-btn').forEach(btn => btn.classList.remove('active'));
+            const alignBtn = document.getElementById('align' + currentAlign.charAt(0).toUpperCase() + currentAlign.slice(1));
+            if (alignBtn) alignBtn.classList.add('active');
+            
+            const config = adjustConfig[activeAdjustment];
+            masterAdjustSlider.min = config.min;
+            masterAdjustSlider.max = config.max;
+            if(config.step) masterAdjustSlider.step = config.step; else masterAdjustSlider.removeAttribute('step');
+            
+            const val = (target === 'image' || activeAdjustment === 'size') ? config.slider.value : textSettings[activeAdjustment];
+            masterAdjustSlider.value = val;
+            masterAdjustValue.textContent = val + config.suffix;
+        }
 
         document.querySelectorAll('#adjustOptionButtons .template-btn').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -576,15 +850,25 @@
                 masterAdjustSlider.min = config.min;
                 masterAdjustSlider.max = config.max;
                 if(config.step) masterAdjustSlider.step = config.step; else masterAdjustSlider.removeAttribute('step');
-                masterAdjustSlider.value = config.slider.value;
-                masterAdjustValue.textContent = config.slider.value + config.suffix;
+                
+                const val = (adjustTarget === 'image' || activeAdjustment === 'size') ? config.slider.value : textSettings[activeAdjustment];
+                masterAdjustSlider.value = val;
+                masterAdjustValue.textContent = val + config.suffix;
             });
         });
 
         if(masterAdjustSlider) {
             masterAdjustSlider.addEventListener('input', () => {
                 const config = adjustConfig[activeAdjustment];
-                config.slider.value = masterAdjustSlider.value;
+                if (adjustTarget === 'image' || activeAdjustment === 'size') {
+                    config.slider.value = masterAdjustSlider.value;
+                    if (activeAdjustment === 'size' && adjustTarget === 'text') {
+                        const tsv = document.getElementById('textSizeValue');
+                        if (tsv) tsv.textContent = masterAdjustSlider.value + 'px';
+                    }
+                } else {
+                    textSettings[activeAdjustment] = parseFloat(masterAdjustSlider.value);
+                }
                 masterAdjustValue.textContent = masterAdjustSlider.value + config.suffix;
                 updateImageAdjustments();
             });
@@ -627,12 +911,25 @@
             if (textSettings.align === 'right') left = currentX - width;
             const top = currentY - height / 2;
             
-            const dx = x - (left + width + 10);
-            const dy = y - (top - 10);
+            const centerX = left + width / 2;
+            const centerY = top + height / 2;
+            const rotate = (textSettings.rotate || 0) * Math.PI / 180;
+            
+            const cos = Math.cos(-rotate);
+            const sin = Math.sin(-rotate);
+            const nx = (x - centerX) * cos - (y - centerY) * sin + centerX;
+            const ny = (x - centerX) * sin + (y - centerY) * cos + centerY;
+            
+            const dx = nx - (left + width + 10);
+            const dy = ny - (top - 10);
             const inDelete = (dx * dx + dy * dy) <= 225;
             
-            const inText = x >= left - 10 && x <= left + width + 10 && y >= top - 10 && y <= top + height + 10;
-            return { inText, inDelete };
+            const dxResize = nx - (left + width + 10);
+            const dyResize = ny - (top + height + 10);
+            const inResize = (dxResize * dxResize + dyResize * dyResize) <= 225;
+            
+            const inText = nx >= left - 10 && nx <= left + width + 10 && ny >= top - 10 && ny <= top + height + 10;
+            return { inText, inDelete, inResize, centerX, centerY };
         }
 
         function checkImageBounds(x, y) {
@@ -640,15 +937,35 @@
             const size = document.getElementById('imgSize').value / 100;
             const imgWidth = bgImage.width * size;
             const imgHeight = bgImage.height * size;
-            const imgX = (canvas.width - imgWidth) / 2;
+            let imgX;
+            if (imageAlign === 'left') {
+                imgX = 0;
+            } else if (imageAlign === 'right') {
+                imgX = canvas.width - imgWidth;
+            } else {
+                imgX = (canvas.width - imgWidth) / 2;
+            }
             const imgY = (canvas.height - imgHeight) / 2;
             
-            const dx = x - (imgX + imgWidth + 5);
-            const dy = y - (imgY - 5);
+            const centerX = imgX + imgWidth / 2;
+            const centerY = imgY + imgHeight / 2;
+            const rotate = (document.getElementById('rotate').value || 0) * Math.PI / 180;
+            
+            const cos = Math.cos(-rotate);
+            const sin = Math.sin(-rotate);
+            const nx = (x - centerX) * cos - (y - centerY) * sin + centerX;
+            const ny = (x - centerX) * sin + (y - centerY) * cos + centerY;
+            
+            const dx = nx - (imgX + imgWidth + 5);
+            const dy = ny - (imgY - 5);
             const inDelete = (dx * dx + dy * dy) <= 225;
             
-            const inImage = x >= imgX && x <= imgX + imgWidth && y >= imgY && y <= imgY + imgHeight;
-            return { inImage, inDelete };
+            const dxResize = nx - (imgX + imgWidth + 5);
+            const dyResize = ny - (imgY + imgHeight + 5);
+            const inResize = (dxResize * dxResize + dyResize * dyResize) <= 225;
+            
+            const inImage = nx >= imgX && nx <= imgX + imgWidth && ny >= imgY && ny <= imgY + imgHeight;
+            return { inImage, inDelete, inResize, centerX, centerY };
         }
 
         function handlePointerDown(e) {
@@ -664,6 +981,14 @@
                     updateText();
                     return;
                 }
+                if (textCheck.inResize) {
+                    isResizing = true;
+                    resizeInitialSize = parseFloat(document.getElementById('textSize').value);
+                    resizeCenterX = textCheck.centerX;
+                    resizeCenterY = textCheck.centerY;
+                    resizeStartDist = Math.hypot(pos.x - resizeCenterX, pos.y - resizeCenterY);
+                    return;
+                }
             }
             
             if (selectedItem === 'image') {
@@ -672,6 +997,14 @@
                     bgImage = null;
                     selectedItem = null;
                     drawCanvas();
+                    return;
+                }
+                if (imgCheck.inResize) {
+                    isResizing = true;
+                    resizeInitialSize = parseFloat(document.getElementById('imgSize').value);
+                    resizeCenterX = imgCheck.centerX;
+                    resizeCenterY = imgCheck.centerY;
+                    resizeStartDist = Math.hypot(pos.x - resizeCenterX, pos.y - resizeCenterY);
                     return;
                 }
             }
@@ -700,8 +1033,36 @@
         }
 
         function handlePointerMove(e) {
-            if (!isDragging || selectedItem !== 'text') return;
             const pos = getCanvasPos(e);
+            
+            if (isResizing && selectedItem) {
+                const currentDist = Math.hypot(pos.x - resizeCenterX, pos.y - resizeCenterY);
+                const ratio = currentDist / resizeStartDist;
+                let newSize = resizeInitialSize * ratio;
+                
+                if (selectedItem === 'text') {
+                    newSize = Math.max(12, Math.min(120, newSize));
+                    document.getElementById('textSize').value = newSize;
+                    const tsv = document.getElementById('textSizeValue');
+                    if (tsv) tsv.textContent = Math.round(newSize) + 'px';
+                    if (adjustTarget === 'text' && activeAdjustment === 'size') {
+                        masterAdjustSlider.value = newSize;
+                        masterAdjustValue.textContent = Math.round(newSize) + 'px';
+                    }
+                } else {
+                    newSize = Math.max(0, Math.min(200, newSize));
+                    document.getElementById('imgSize').value = newSize;
+                    if (adjustTarget === 'image' && activeAdjustment === 'size') {
+                        masterAdjustSlider.value = newSize;
+                        masterAdjustValue.textContent = Math.round(newSize) + '%';
+                    }
+                }
+                
+                drawCanvas();
+                return;
+            }
+            
+            if (!isDragging || selectedItem !== 'text') return;
             textSettings.x = pos.x - dragOffsetX;
             textSettings.y = pos.y - dragOffsetY;
             drawCanvas();
@@ -709,6 +1070,7 @@
 
         function handlePointerUp() {
             isDragging = false;
+            isResizing = false;
         }
 
         canvas.addEventListener('mousedown', handlePointerDown);
@@ -718,6 +1080,37 @@
         canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handlePointerDown(e); }, { passive: false });
         canvas.addEventListener('touchmove', (e) => { e.preventDefault(); handlePointerMove(e); }, { passive: false });
         window.addEventListener('touchend', handlePointerUp);
+
+        canvas.addEventListener('dblclick', (e) => {
+            e.stopPropagation();
+            const pos = getCanvasPos(e);
+            const textCheck = checkTextBounds(pos.x, pos.y);
+            if (textCheck.inText) {
+                selectedItem = 'text';
+                drawCanvas();
+                
+                const modal = document.getElementById('textEditModal');
+                const modalText = document.getElementById('modalTextContent');
+                if (modal && modalText) {
+                    modalText.value = document.getElementById('textContent').value;
+                    modal.style.display = 'flex';
+                    setTimeout(() => {
+                        modalText.focus();
+                        modalText.setSelectionRange(modalText.value.length, modalText.value.length);
+                    }, 50);
+                }
+            }
+        });
+
+        window.saveModalText = function() {
+            const modal = document.getElementById('textEditModal');
+            const modalText = document.getElementById('modalTextContent');
+            if (modal && modalText) {
+                document.getElementById('textContent').value = modalText.value;
+                updateText();
+                modal.style.display = 'none';
+            }
+        };
 
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Delete' || e.key === 'Backspace') {
@@ -735,3 +1128,20 @@
                 }
             }
         });
+
+        function toggleTheme() {
+            const body = document.body;
+            const themeIcon = document.getElementById('themeIcon');
+            const themeToggleBtn = document.getElementById('themeToggleBtn');
+            const btnText = themeToggleBtn.querySelector('span:last-child');
+            
+            if (body.getAttribute('data-theme') === 'light') {
+                body.removeAttribute('data-theme');
+                themeIcon.textContent = '🌙';
+                if (btnText) btnText.textContent = 'Night';
+            } else {
+                body.setAttribute('data-theme', 'light');
+                themeIcon.textContent = '☀️';
+                if (btnText) btnText.textContent = 'Day';
+            }
+        }
