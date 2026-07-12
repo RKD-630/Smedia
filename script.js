@@ -614,6 +614,7 @@
                 const sidebar = document.querySelector('.sidebar-right');
                 
                 if (tab.classList.contains('active')) {
+                    sidebar.style.height = '';
                     sidebar.classList.remove('active');
                     tab.classList.remove('active');
                     return;
@@ -622,6 +623,7 @@
                 document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
                 tab.classList.add('active');
                 
+                sidebar.style.height = '';
                 sidebar.classList.add('active');
                 document.querySelectorAll('.sidebar-right .control-section').forEach(sec => sec.classList.remove('active'));
                 const targetId = tab.getAttribute('data-tab');
@@ -633,9 +635,11 @@
         window.toggleSidebar = function() {
             const sidebar = document.querySelector('.sidebar-right');
             if (sidebar.classList.contains('active')) {
+                sidebar.style.height = '';
                 sidebar.classList.remove('active');
                 document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
             } else {
+                sidebar.style.height = '';
                 sidebar.classList.add('active');
                 const activeSection = document.querySelector('.sidebar-right .control-section.active');
                 if (activeSection) {
@@ -688,11 +692,12 @@
                 if (icon) icon.textContent = '⛶';
             }
         });
-
-        // Drag down to hide sidebar
+        
+        // Drag logic for sidebar (drag down to hide, drag up to increase height)
         let sidebarDragStartY = 0;
         let sidebarCurrentY = 0;
         let isSidebarDragging = false;
+        let initialSidebarHeight = 0;
         const sidebarEl = document.querySelector('.sidebar-right');
         const dragHandleEl = document.getElementById('dragHandle');
 
@@ -701,6 +706,7 @@
                 isSidebarDragging = true;
                 const isRight = sidebarEl.classList.contains('position-right');
                 sidebarDragStartY = isRight ? coords.clientX : coords.clientY;
+                initialSidebarHeight = sidebarEl.getBoundingClientRect().height;
                 sidebarEl.style.transition = 'none';
             };
 
@@ -709,12 +715,17 @@
                 const isRight = sidebarEl.classList.contains('position-right');
                 const currentPos = isRight ? coords.clientX : coords.clientY;
                 const delta = currentPos - sidebarDragStartY;
-                if (delta > 0) {
-                    sidebarCurrentY = delta;
-                    if (isRight) {
-                        sidebarEl.style.transform = `translateX(${delta}px)`;
-                    } else {
+                sidebarCurrentY = delta;
+                
+                if (isRight) {
+                    if (delta > 0) sidebarEl.style.transform = `translateX(${delta}px)`;
+                } else {
+                    if (delta > 0) {
                         sidebarEl.style.transform = `translateY(${delta}px)`;
+                    } else {
+                        sidebarEl.style.transform = `translateY(0)`;
+                        const newHeight = Math.min(window.innerHeight * 0.85, initialSidebarHeight - delta);
+                        sidebarEl.style.height = `${newHeight}px`;
                     }
                 }
             };
@@ -722,10 +733,11 @@
             const dragEnd = () => {
                 if (!isSidebarDragging) return;
                 isSidebarDragging = false;
-                sidebarEl.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+                sidebarEl.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), height 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
                 if (sidebarCurrentY > 50) {
                     sidebarEl.classList.remove('active');
                     document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+                    setTimeout(() => { sidebarEl.style.height = ''; }, 300);
                 }
                 sidebarEl.style.transform = '';
                 sidebarCurrentY = 0;
@@ -779,7 +791,7 @@
 
         if (canvasContainer) {
             canvasContainer.addEventListener('dblclick', () => {
-                if (window.innerWidth <= 1023) {
+                if (window.matchMedia("(max-width: 1023px) and (orientation: portrait)").matches) {
                     bottomNav.style.display = 'flex';
                     sidebarRight.style.display = 'block';
                 }
@@ -968,7 +980,53 @@
             return { inImage, inDelete, inResize, centerX, centerY };
         }
 
+        let canvasPanEnabled = false;
+        let isCanvasPanning = false;
+        let canvasPanStartX = 0;
+        let canvasPanStartY = 0;
+        let canvasWrapperStartLeft = 0;
+        let canvasWrapperStartTop = 0;
+
+        window.updateSidebarOpacity = function(val) {
+            document.getElementById('sidebarOpacityValue').textContent = val + '%';
+            const sidebar = document.querySelector('.sidebar-right');
+            if (sidebar) {
+                if (val == 100) {
+                    sidebar.style.backgroundColor = '';
+                    sidebar.style.backdropFilter = '';
+                } else {
+                    sidebar.style.backgroundColor = `color-mix(in srgb, var(--secondary-bg) ${val}%, transparent)`;
+                    sidebar.style.backdropFilter = `blur(${10 - (val / 10)}px)`;
+                }
+            }
+        };
+
+        window.toggleCanvasDrag = function() {
+            canvasPanEnabled = document.getElementById('dragCanvasToggle').checked;
+            const wrapper = document.getElementById('canvasWrapper');
+            if (canvasPanEnabled) {
+                wrapper.style.cursor = 'grab';
+            } else {
+                wrapper.style.cursor = 'default';
+                wrapper.style.left = '0px';
+                wrapper.style.top = '0px';
+            }
+        };
+
         function handlePointerDown(e) {
+            if (e.target !== canvas) return;
+            
+            if (canvasPanEnabled) {
+                isCanvasPanning = true;
+                canvasPanStartX = e.touches ? e.touches[0].clientX : e.clientX;
+                canvasPanStartY = e.touches ? e.touches[0].clientY : e.clientY;
+                const wrapper = document.getElementById('canvasWrapper');
+                canvasWrapperStartLeft = parseInt(wrapper.style.left || '0');
+                canvasWrapperStartTop = parseInt(wrapper.style.top || '0');
+                wrapper.style.cursor = 'grabbing';
+                return;
+            }
+
             const pos = getCanvasPos(e);
             
             if (selectedItem === 'text') {
@@ -1033,6 +1091,17 @@
         }
 
         function handlePointerMove(e) {
+            if (isCanvasPanning) {
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                const dx = clientX - canvasPanStartX;
+                const dy = clientY - canvasPanStartY;
+                const wrapper = document.getElementById('canvasWrapper');
+                wrapper.style.left = (canvasWrapperStartLeft + dx) + 'px';
+                wrapper.style.top = (canvasWrapperStartTop + dy) + 'px';
+                return;
+            }
+
             const pos = getCanvasPos(e);
             
             if (isResizing && selectedItem) {
@@ -1069,6 +1138,11 @@
         }
 
         function handlePointerUp() {
+            if (isCanvasPanning) {
+                isCanvasPanning = false;
+                const wrapper = document.getElementById('canvasWrapper');
+                if (canvasPanEnabled) wrapper.style.cursor = 'grab';
+            }
             isDragging = false;
             isResizing = false;
         }

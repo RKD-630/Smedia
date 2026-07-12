@@ -1,9 +1,14 @@
-<!DOCTYPE html><html lang="en"><head>
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Social Media Image Creator</title>
-    
-<link rel="stylesheet" href="style.css" /></head>
+
+    <link rel="stylesheet" href="style.css" />
+</head>
+
 <body>
     <div class="loading" id="loading">
         <div class="spinner"></div>
@@ -12,13 +17,19 @@
     <div class="toast" id="toast"></div>
 
     <!-- Text Edit Modal -->
-    <div id="textEditModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 10000; align-items: center; justify-content: center; padding: 1rem; backdrop-filter: blur(5px);">
-        <div style="background: var(--secondary-bg); width: 100%; max-width: 400px; padding: 1.5rem; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
-            <h3 style="margin-bottom: 1rem; color: var(--text-primary); font-size: 1.1rem; font-weight: 600;">Edit Text</h3>
-            <textarea id="modalTextContent" style="width: 100%; height: 120px; padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-color); background: var(--primary-bg); color: var(--text-primary); font-family: inherit; font-size: 1rem; resize: vertical; margin-bottom: 1rem; outline: none;"></textarea>
+    <div id="textEditModal"
+        style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 10000; align-items: center; justify-content: center; padding: 1rem; backdrop-filter: blur(5px);">
+        <div
+            style="background: var(--secondary-bg); width: 100%; max-width: 400px; padding: 1.5rem; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+            <h3 style="margin-bottom: 1rem; color: var(--text-primary); font-size: 1.1rem; font-weight: 600;">Edit Text
+            </h3>
+            <textarea id="modalTextContent"
+                style="width: 100%; height: 120px; padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-color); background: var(--primary-bg); color: var(--text-primary); font-family: inherit; font-size: 1rem; resize: vertical; margin-bottom: 1rem; outline: none;"></textarea>
             <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
-                <button onclick="document.getElementById('textEditModal').style.display='none'" style="padding: 0.5rem 1rem; border-radius: 6px; border: none; background: transparent; color: var(--text-secondary); cursor: pointer; font-weight: 500;">Cancel</button>
-                <button onclick="saveModalText()" style="padding: 0.5rem 1rem; border-radius: 6px; border: none; background: var(--accent-color); color: white; font-weight: bold; cursor: pointer;">Apply</button>
+                <button onclick="document.getElementById('textEditModal').style.display='none'"
+                    style="padding: 0.5rem 1rem; border-radius: 6px; border: none; background: transparent; color: var(--text-secondary); cursor: pointer; font-weight: 500;">Cancel</button>
+                <button onclick="saveModalText()"
+                    style="padding: 0.5rem 1rem; border-radius: 6px; border: none; background: var(--accent-color); color: white; font-weight: bold; cursor: pointer;">Apply</button>
             </div>
         </div>
     </div>
@@ -27,16 +38,10 @@
 
     <header class="header">
         <div class="header-buttons">
-            <input type="file" id="importAll" multiple="" accept="image/*" onchange="handleImportAll(event)" style="display: none;" />
-            
-            <div class="ratio-buttons" style="display: flex; gap: 0.25rem;">
-                <button class="header-select ratio-btn active" onclick="setPlatformRatio(this, 1200, 630)">1.9:1</button>
-                <button class="header-select ratio-btn" onclick="setPlatformRatio(this, 1080, 1080)">1:1</button>
-                <button class="header-select ratio-btn" onclick="setPlatformRatio(this, 1200, 675)">16:9</button>
-                <button class="header-select ratio-btn" onclick="setPlatformRatio(this, 1080, 1920)">9:16</button>
-            </div>
+            <input type="file" id="importAll" multiple="" accept="image/*" onchange="handleImportAll(event)"
+                style="display: none;" />
 
-            <div class="format-buttons" style="display: flex; gap: 0.25rem;">
+            <div class="format-buttons" style="display: flex; gap: 0.25rem; align-items: center;">
                 <button class="header-select format-btn active" onclick="setFormatBtn(this, 'png')">PNG</button>
                 <button class="header-select format-btn" onclick="setFormatBtn(this, 'jpg')">JPG</button>
                 <button class="header-select format-btn" onclick="setFormatBtn(this, 'webp')">WebP</button>
@@ -45,15 +50,15 @@
             <button class="save-btn" onclick="saveImage()">
                 💾 Save
             </button>
-            
+
             <div style="display: flex; gap: 0.5rem; margin-left: auto; align-items: center;">
-                <button class="header-select" onclick="toggleSidebar()" style="display: flex; align-items: center; justify-content: center; padding: 0.5rem; width: 42px; height: 42px;" title="Settings">
-                    <span style="font-size: 1.25rem;">⚙️</span>
-                </button>
-                <button class="header-select" onclick="toggleFullScreen()" style="display: flex; align-items: center; justify-content: center; padding: 0.5rem; width: 42px; height: 42px;" title="Full Screen">
+                <button class="header-select" onclick="toggleFullScreen()"
+                    style="display: flex; align-items: center; justify-content: center; padding: 0.5rem; width: 42px; height: 42px;"
+                    title="Full Screen">
                     <span id="fullscreenIcon" style="font-size: 1.25rem;">⛶</span>
                 </button>
-                <button id="themeToggleBtn" class="header-select" onclick="toggleTheme()" style="background: var(--secondary-bg); display: flex; align-items: center; gap: 0.5rem; justify-content: center; height: 42px;">
+                <button id="themeToggleBtn" class="header-select" onclick="toggleTheme()"
+                    style="background: var(--secondary-bg); display: flex; align-items: center; gap: 0.5rem; justify-content: center; height: 42px;">
                     <span id="themeIcon">🌙</span> <span>Night</span>
                 </button>
             </div>
@@ -61,17 +66,11 @@
     </header>
 
     <div class="container">
+
         <!-- Canvas Area -->
         <div class="canvas-container">
             <div class="canvas-wrapper" id="canvasWrapper">
                 <canvas id="mainCanvas" width="1200" height="630"></canvas>
-            </div>
-            
-            <!-- Zoom Controls -->
-            <div style="position: absolute; bottom: 1.5rem; right: 1.5rem; display: flex; flex-direction: column; gap: 0.5rem; background: var(--secondary-bg); padding: 0.5rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 100;">
-                <button onclick="setZoom(0.1)" style="width: 32px; height: 32px; border: none; border-radius: 4px; background: var(--primary-bg); color: var(--text-primary); font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s;">+</button>
-                <div id="zoomLevelDisplay" style="text-align: center; font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); pointer-events: none;">100%</div>
-                <button onclick="setZoom(-0.1)" style="width: 32px; height: 32px; border: none; border-radius: 4px; background: var(--primary-bg); color: var(--text-primary); font-size: 1.5rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s;">-</button>
             </div>
         </div>
 
@@ -81,38 +80,93 @@
                 <div class="drag-handle"></div>
             </div>
             <!-- Background Section -->
+            <!-- Settings Section -->
+            <div class="control-section active" id="tab-settings">
+                <h3 class="section-title">Canvas Settings</h3>
+
+                <!-- Ratio Controls -->
+                <div style="background: var(--primary-bg); padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1rem;">
+                    <span style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.5rem;">Canvas Ratio</span>
+                    <div class="ratio-buttons" style="display: flex; gap: 0.25rem; flex-wrap: wrap;">
+                        <button class="header-select ratio-btn active"
+                            onclick="setPlatformRatio(this, 1200, 630)">1.9:1</button>
+                        <button class="header-select ratio-btn" onclick="setPlatformRatio(this, 1080, 1080)">1:1</button>
+                        <button class="header-select ratio-btn" onclick="setPlatformRatio(this, 1200, 675)">16:9</button>
+                        <button class="header-select ratio-btn" onclick="setPlatformRatio(this, 1080, 1920)">9:16</button>
+                    </div>
+                </div>
+
+                <!-- Zoom Controls -->
+                <div style="display: flex; justify-content: space-between; align-items: center; background: var(--primary-bg); padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1rem;">
+                    <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);">Canvas Zoom</span>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <button onclick="setZoom(-0.1)"
+                            style="width: 32px; height: 32px; border: 1px solid var(--border-color); border-radius: 4px; background: transparent; color: var(--text-primary); font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center;">-</button>
+                        <div id="zoomLevelDisplay"
+                            style="text-align: center; font-size: 0.75rem; font-weight: 600; color: var(--text-primary); min-width: 45px;">
+                            100%</div>
+                        <button onclick="setZoom(0.1)"
+                            style="width: 32px; height: 32px; border: 1px solid var(--border-color); border-radius: 4px; background: transparent; color: var(--text-primary); font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center;">+</button>
+                    </div>
+                </div>
+
+                <!-- Drag Canvas -->
+                <div style="background: var(--primary-bg); padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1rem;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); cursor: pointer;" title="Drag & Pan Canvas">
+                        <input type="checkbox" id="dragCanvasToggle" onchange="toggleCanvasDrag()" style="width: 18px; height: 18px;"> Enable Canvas Dragging
+                    </label>
+                </div>
+
+                <!-- Sidebar Opacity -->
+                <div style="background: var(--primary-bg); padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1rem;">
+                    <label class="control-label" style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);">
+                        Sidebar Opacity <span id="sidebarOpacityValue">100%</span>
+                    </label>
+                    <input type="range" id="sidebarOpacitySlider" min="10" max="100" value="100" style="width: 100%;" oninput="updateSidebarOpacity(this.value)">
+                </div>
+            </div>
+
             <!-- Background Section -->
-            <div class="control-section active" id="tab-bg">
+            <div class="control-section" id="tab-bg">
                 <h3 class="section-title">Background & Text</h3>
-                
-                <div style="display: flex; gap: 1rem; align-items: stretch; justify-content: space-between; margin-bottom: 1.5rem;">
-                    <div class="control-group" style="margin-bottom: 0; display: flex; flex-direction: column; align-items: center; gap: 0.25rem;">
+
+                <div
+                    style="display: flex; gap: 1rem; align-items: stretch; justify-content: space-between; margin-bottom: 1.5rem;">
+                    <div class="control-group"
+                        style="margin-bottom: 0; display: flex; flex-direction: column; align-items: center; gap: 0.25rem;">
                         <label class="control-label" style="margin-bottom: 0; font-size: 0.75rem;">Color 1</label>
-                        <input type="color" id="gradientColor1" value="#667eea" onchange="updateBackground()" style="width: 36px; height: 36px; padding: 0; border: none; border-radius: 4px; cursor: pointer;" />
+                        <input type="color" id="gradientColor1" value="#667eea" onchange="updateBackground()"
+                            style="width: 36px; height: 36px; padding: 0; border: none; border-radius: 4px; cursor: pointer;" />
                     </div>
 
-                    <div class="control-group" style="margin-bottom: 0; display: flex; flex-direction: column; align-items: center; gap: 0.25rem;">
+                    <div class="control-group"
+                        style="margin-bottom: 0; display: flex; flex-direction: column; align-items: center; gap: 0.25rem;">
                         <label class="control-label" style="margin-bottom: 0; font-size: 0.75rem;">Color 2</label>
-                        <input type="color" id="gradientColor2" value="#764ba2" onchange="updateBackground()" style="width: 36px; height: 36px; padding: 0; border: none; border-radius: 4px; cursor: pointer;" />
+                        <input type="color" id="gradientColor2" value="#764ba2" onchange="updateBackground()"
+                            style="width: 36px; height: 36px; padding: 0; border: none; border-radius: 4px; cursor: pointer;" />
                     </div>
 
                     <div class="control-group" style="margin-bottom: 0; flex: 1;">
-                        <label class="file-label" onclick="document.getElementById('bgImage').click()" style="padding: 0.5rem; display: flex; align-items: center; justify-content: center; height: 100%; font-size: 0.85rem; margin: 0;">
+                        <label class="file-label" onclick="document.getElementById('bgImage').click()"
+                            style="padding: 0.5rem; display: flex; align-items: center; justify-content: center; height: 100%; font-size: 0.85rem; margin: 0;">
                             📤 Upload BG
                         </label>
-                        <input type="file" id="bgImage" accept="image/*" onchange="handleBgImage(event)" style="display: none;" />
+                        <input type="file" id="bgImage" accept="image/*" onchange="handleBgImage(event)"
+                            style="display: none;" />
                     </div>
                 </div>
 
                 <div class="control-group" style="margin-bottom: 1.5rem;">
                     <label class="control-label">Text Content</label>
-                    <textarea id="textContent" placeholder="Enter your text here..." oninput="updateText()" style="min-height: 80px; width: 100%; padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-color); background: var(--secondary-bg); color: var(--text-primary); resize: vertical; font-family: inherit; font-size: 0.95rem; line-height: 1.5;"></textarea>
+                    <textarea id="textContent" placeholder="Enter your text here..." oninput="updateText()"
+                        style="min-height: 80px; width: 100%; padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-color); background: var(--secondary-bg); color: var(--text-primary); resize: vertical; font-family: inherit; font-size: 0.95rem; line-height: 1.5;"></textarea>
                 </div>
 
                 <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; margin-bottom: 1.5rem;">
                     <div class="control-group" style="margin-bottom: 0;">
                         <label class="control-label">Font Family</label>
-                        <select id="fontFamily" onchange="updateText()" style="width: 100%; padding: 0.5rem; border-radius: 8px; border: 1px solid var(--border-color); background: var(--secondary-bg); color: var(--text-primary);">
+                        <select id="fontFamily" onchange="updateText()"
+                            style="width: 100%; padding: 0.5rem; border-radius: 8px; border: 1px solid var(--border-color); background: var(--secondary-bg); color: var(--text-primary);">
                             <option value="Arial">Arial</option>
                             <option value="Helvetica">Helvetica</option>
                             <option value="Times New Roman">Times New Roman</option>
@@ -126,20 +180,27 @@
 
                     <div class="control-group" style="margin-bottom: 0; display: flex; flex-direction: column;">
                         <label class="control-label">Text Color</label>
-                        <input type="color" id="textColor" value="#ffffff" onchange="updateText()" style="width: 100%; height: 36px; padding: 0; border: none; border-radius: 4px; cursor: pointer;" />
+                        <input type="color" id="textColor" value="#ffffff" onchange="updateText()"
+                            style="width: 100%; height: 36px; padding: 0; border: none; border-radius: 4px; cursor: pointer;" />
                     </div>
                 </div>
 
                 <div class="control-group" style="margin-bottom: 1.5rem;">
                     <label class="control-label">Styling & Alignment</label>
                     <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.5rem;">
-                        <button class="text-btn" id="boldBtn" onclick="toggleTextStyle('bold')" style="grid-column: span 1; font-weight: bold; padding: 0.5rem; border-radius: 6px;">B</button>
-                        <button class="text-btn" id="italicBtn" onclick="toggleTextStyle('italic')" style="grid-column: span 1; font-style: italic; padding: 0.5rem; border-radius: 6px;">I</button>
-                        <button class="text-btn" id="underlineBtn" onclick="toggleTextStyle('underline')" style="grid-column: span 1; text-decoration: underline; padding: 0.5rem; border-radius: 6px;">U</button>
-                        
-                        <button class="align-btn" id="alignLeft" onclick="setAlignment('left')" style="grid-column: span 1; padding: 0.5rem; border-radius: 6px;">⬅</button>
-                        <button class="align-btn active" id="alignCenter" onclick="setAlignment('center')" style="grid-column: span 1; padding: 0.5rem; border-radius: 6px;">⬆</button>
-                        <button class="align-btn" id="alignRight" onclick="setAlignment('right')" style="grid-column: span 1; padding: 0.5rem; border-radius: 6px;">➡</button>
+                        <button class="text-btn" id="boldBtn" onclick="toggleTextStyle('bold')"
+                            style="grid-column: span 1; font-weight: bold; padding: 0.5rem; border-radius: 6px;">B</button>
+                        <button class="text-btn" id="italicBtn" onclick="toggleTextStyle('italic')"
+                            style="grid-column: span 1; font-style: italic; padding: 0.5rem; border-radius: 6px;">I</button>
+                        <button class="text-btn" id="underlineBtn" onclick="toggleTextStyle('underline')"
+                            style="grid-column: span 1; text-decoration: underline; padding: 0.5rem; border-radius: 6px;">U</button>
+
+                        <button class="align-btn" id="alignLeft" onclick="setAlignment('left')"
+                            style="grid-column: span 1; padding: 0.5rem; border-radius: 6px;">⬅</button>
+                        <button class="align-btn active" id="alignCenter" onclick="setAlignment('center')"
+                            style="grid-column: span 1; padding: 0.5rem; border-radius: 6px;">⬆</button>
+                        <button class="align-btn" id="alignRight" onclick="setAlignment('right')"
+                            style="grid-column: span 1; padding: 0.5rem; border-radius: 6px;">➡</button>
                     </div>
                 </div>
 
@@ -152,15 +213,19 @@
                             </div>
                         </div>
                         <div id="textBgColorGroup" style="display: none; width: 100%;">
-                            <input type="color" id="textBgColor" value="#000000" onchange="updateText()" style="width: 100%; height: 36px; padding: 0; border: none; border-radius: 4px; cursor: pointer;" />
+                            <input type="color" id="textBgColor" value="#000000" onchange="updateText()"
+                                style="width: 100%; height: 36px; padding: 0; border: none; border-radius: 4px; cursor: pointer;" />
                         </div>
                     </div>
 
                     <div class="control-group" style="margin-bottom: 0;">
-                        <label class="control-label" style="font-size: 0.85rem;">Shadow <span id="shadowBlurValue" style="float: right;">0px</span></label>
+                        <label class="control-label" style="font-size: 0.85rem;">Shadow <span id="shadowBlurValue"
+                                style="float: right;">0px</span></label>
                         <div style="display: flex; gap: 0.5rem;">
-                            <input type="color" id="shadowColor" value="#000000" onchange="updateText()" style="width: 36px; height: 36px; padding: 0; border: none; border-radius: 4px; cursor: pointer;" />
-                            <input type="range" id="shadowBlur" min="0" max="50" value="0" oninput="updateText()" style="flex: 1;" />
+                            <input type="color" id="shadowColor" value="#000000" onchange="updateText()"
+                                style="width: 36px; height: 36px; padding: 0; border: none; border-radius: 4px; cursor: pointer;" />
+                            <input type="range" id="shadowBlur" min="0" max="50" value="0" oninput="updateText()"
+                                style="flex: 1;" />
                         </div>
                     </div>
                 </div>
@@ -169,30 +234,49 @@
             <!-- Image Adjustments -->
             <div class="control-section" id="tab-adjust">
                 <h3 class="section-title">Adjustments</h3>
-                
-                <div class="control-group" style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; background: var(--primary-bg); padding: 0.25rem; border-radius: 8px;">
-                    <button class="target-btn active" onclick="setAdjustTarget('image')" id="targetImgBtn" style="flex: 1; padding: 0.5rem; background: var(--accent-color); border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 0.85rem; font-weight: 600;">🖼️ Image</button>
-                    <button class="target-btn" onclick="setAdjustTarget('text')" id="targetTxtBtn" style="flex: 1; padding: 0.5rem; background: transparent; border: none; border-radius: 6px; color: var(--text-primary); cursor: pointer; font-size: 0.85rem; font-weight: 600;">📝 Text</button>
+
+                <div class="control-group"
+                    style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; background: var(--primary-bg); padding: 0.25rem; border-radius: 8px;">
+                    <button class="target-btn active" onclick="setAdjustTarget('image')" id="targetImgBtn"
+                        style="flex: 1; padding: 0.5rem; background: var(--accent-color); border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 0.85rem; font-weight: 600;">🖼️
+                        Image</button>
+                    <button class="target-btn" onclick="setAdjustTarget('text')" id="targetTxtBtn"
+                        style="flex: 1; padding: 0.5rem; background: transparent; border: none; border-radius: 6px; color: var(--text-primary); cursor: pointer; font-size: 0.85rem; font-weight: 600;">📝
+                        Text</button>
                 </div>
 
-                <div class="template-grid" id="adjustOptionButtons" style="margin-bottom: 1.5rem; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;">
-                    <button class="template-btn active" data-adjust="contrast" style="font-size: 0.75rem; padding: 0.5rem; min-height: unset;">Contrast</button>
-                    <button class="template-btn" data-adjust="brightness" style="font-size: 0.75rem; padding: 0.5rem; min-height: unset;">Brightness</button>
-                    <button class="template-btn" data-adjust="darkness" style="font-size: 0.75rem; padding: 0.5rem; min-height: unset;">Darkness</button>
-                    <button class="template-btn" data-adjust="blur" style="font-size: 0.75rem; padding: 0.5rem; min-height: unset;">Blur</button>
-                    <button class="template-btn" data-adjust="opacity" style="font-size: 0.75rem; padding: 0.5rem; min-height: unset;">Opacity</button>
-                    <button class="template-btn" data-adjust="sepia" style="font-size: 0.75rem; padding: 0.5rem; min-height: unset;">Sepia</button>
-                    <button class="template-btn" data-adjust="warmth" style="font-size: 0.75rem; padding: 0.5rem; min-height: unset;">Warmth</button>
-                    <button class="template-btn" data-adjust="tint" style="font-size: 0.75rem; padding: 0.5rem; min-height: unset;">Tint</button>
-                    <button class="template-btn" data-adjust="hue" style="font-size: 0.75rem; padding: 0.5rem; min-height: unset;">Hue</button>
-                    <button class="template-btn" data-adjust="rotate" style="font-size: 0.75rem; padding: 0.5rem; min-height: unset;">Rotate</button>
-                    <button class="template-btn" data-adjust="hd" style="font-size: 0.75rem; padding: 0.5rem; min-height: unset;">HD Quality</button>
-                    <button class="template-btn" data-adjust="size" style="font-size: 0.75rem; padding: 0.5rem; min-height: unset;">Size</button>
+                <div class="template-grid" id="adjustOptionButtons"
+                    style="margin-bottom: 1.5rem; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;">
+                    <button class="template-btn active" data-adjust="contrast"
+                        style="font-size: 0.75rem; padding: 0.5rem; min-height: unset;">Contrast</button>
+                    <button class="template-btn" data-adjust="brightness"
+                        style="font-size: 0.75rem; padding: 0.5rem; min-height: unset;">Brightness</button>
+                    <button class="template-btn" data-adjust="darkness"
+                        style="font-size: 0.75rem; padding: 0.5rem; min-height: unset;">Darkness</button>
+                    <button class="template-btn" data-adjust="blur"
+                        style="font-size: 0.75rem; padding: 0.5rem; min-height: unset;">Blur</button>
+                    <button class="template-btn" data-adjust="opacity"
+                        style="font-size: 0.75rem; padding: 0.5rem; min-height: unset;">Opacity</button>
+                    <button class="template-btn" data-adjust="sepia"
+                        style="font-size: 0.75rem; padding: 0.5rem; min-height: unset;">Sepia</button>
+                    <button class="template-btn" data-adjust="warmth"
+                        style="font-size: 0.75rem; padding: 0.5rem; min-height: unset;">Warmth</button>
+                    <button class="template-btn" data-adjust="tint"
+                        style="font-size: 0.75rem; padding: 0.5rem; min-height: unset;">Tint</button>
+                    <button class="template-btn" data-adjust="hue"
+                        style="font-size: 0.75rem; padding: 0.5rem; min-height: unset;">Hue</button>
+                    <button class="template-btn" data-adjust="rotate"
+                        style="font-size: 0.75rem; padding: 0.5rem; min-height: unset;">Rotate</button>
+                    <button class="template-btn" data-adjust="hd"
+                        style="font-size: 0.75rem; padding: 0.5rem; min-height: unset;">HD Quality</button>
+                    <button class="template-btn" data-adjust="size"
+                        style="font-size: 0.75rem; padding: 0.5rem; min-height: unset;">Size</button>
                 </div>
 
                 <div class="control-group" id="masterSliderGroup">
                     <label class="control-label">
-                        <span id="masterAdjustLabel">Contrast</span> <span class="range-value" id="masterAdjustValue">100%</span>
+                        <span id="masterAdjustLabel">Contrast</span> <span class="range-value"
+                            id="masterAdjustValue">100%</span>
                     </label>
                     <input type="range" id="masterAdjustSlider" min="0" max="200" value="100" />
                 </div>
@@ -225,9 +309,12 @@
                     <button class="template-btn outline" onclick="applyTextTemplate('outline')">⭕ Outline</button>
                     <button class="template-btn shadow" onclick="applyTextTemplate('shadow')">🌑 3D Shadow</button>
                     <button class="template-btn gradient" onclick="applyTextTemplate('gradient')">🌈 Gradient</button>
-                    <button class="template-btn" onclick="applyTextTemplate('retro')" style="background: #ff6b6b; color: white;">📼 Retro</button>
-                    <button class="template-btn" onclick="applyTextTemplate('cyber')" style="background: #00d9ff; color: #000;">🤖 Cyber</button>
-                    <button class="template-btn" onclick="applyTextTemplate('elegant')" style="background: linear-gradient(135deg, #667eea, #764ba2);">💎 Elegant</button>
+                    <button class="template-btn" onclick="applyTextTemplate('retro')"
+                        style="background: #ff6b6b; color: white;">📼 Retro</button>
+                    <button class="template-btn" onclick="applyTextTemplate('cyber')"
+                        style="background: #00d9ff; color: #000;">🤖 Cyber</button>
+                    <button class="template-btn" onclick="applyTextTemplate('elegant')"
+                        style="background: linear-gradient(135deg, #667eea, #764ba2);">💎 Elegant</button>
                 </div>
             </div>
 
@@ -239,21 +326,28 @@
 
     <!-- Bottom Navigation for Mobile -->
     <nav class="bottom-nav">
-        <button class="nav-tab active" data-tab="tab-bg">
-            <span style="font-size: 1.25rem;">🖼️</span>
+        <button class="nav-tab active" data-tab="tab-settings">
+            <span>⚙️</span>
+            <span>Settings</span>
+        </button>
+        <button class="nav-tab" data-tab="tab-bg">
+            <span>🖼️</span>
             <span>BG & Text</span>
         </button>
         <button class="nav-tab" data-tab="tab-adjust">
-            <span style="font-size: 1.25rem;">🎛️</span>
+            <span>🎛️</span>
             <span>Adjust</span>
         </button>
         <button class="nav-tab" data-tab="tab-effects">
-            <span style="font-size: 1.25rem;">✨</span>
+            <span>✨</span>
             <span>Effects</span>
         </button>
 
     </nav>
 
-    
 
-<script src="script.js"></script></body></html>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
