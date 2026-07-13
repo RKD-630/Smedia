@@ -74,13 +74,13 @@
                 const timestamp = new Date().getTime();
                 
                 if (saveFormat === 'png') {
-                    link.download = `social-post-${timestamp}.png`;
+                    link.download = `VIKRAM32.png`;
                     link.href = canvas.toDataURL('image/png', 1.0);
                 } else if (saveFormat === 'jpg') {
-                    link.download = `social-post-${timestamp}.jpg`;
+                    link.download = `VIKRAM32.jpg`;
                     link.href = canvas.toDataURL('image/jpeg', 0.95);
                 } else if (saveFormat === 'webp') {
-                    link.download = `social-post-${timestamp}.webp`;
+                    link.download = `VIKRAM32.webp`;
                     link.href = canvas.toDataURL('image/webp', 0.95);
                 }
                 
@@ -96,11 +96,12 @@
             // Clear canvas
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // Draw background
+            // Draw gradient background
+            drawGradientBackground();
+            
+            // Draw background image if present
             if (bgImage) {
                 drawBackgroundImage();
-            } else {
-                drawGradientBackground();
             }
             
             // Draw text
@@ -491,12 +492,7 @@
 
         // Update background
         function updateBackground() {
-            if (!bgImage) {
-                drawCanvas();
-            } else {
-                drawBackgroundImage();
-                drawText();
-            }
+            drawCanvas();
         }
 
         // Handle background image upload

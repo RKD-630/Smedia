@@ -162,7 +162,6 @@
             display: block;
             max-width: 100%;
             max-height: calc(100vh - 180px);
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             object-fit: contain;
         }
 
