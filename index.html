@@ -285,7 +285,7 @@
 
                 <div style="display: none;">
                     <input type="range" id="imgSize" min="0" max="200" value="100" />
-                    <input type="range" id="textSize" min="12" max="120" value="48" />
+                    <input type="range" id="textSize" min="12" max="250" value="48" />
                     <input type="range" id="contrast" min="0" max="200" value="100" />
                     <input type="range" id="brightness" min="0" max="200" value="100" />
                     <input type="range" id="darkness" min="0" max="100" value="0" />
@@ -303,7 +303,7 @@
             <!-- Text Effect Templates -->
             <div class="control-section" id="tab-effects">
                 <h3 class="section-title">Text Effect Templates</h3>
-                <div class="template-grid">
+                <div class="template-grid" style="grid-template-columns: repeat(3, 1fr); gap: 0.5rem;">
                     <button class="template-btn neon" onclick="applyTextTemplate('neon')">✨ Neon Glow</button>
                     <button class="template-btn gold" onclick="applyTextTemplate('gold')">🏆 Gold</button>
                     <button class="template-btn outline" onclick="applyTextTemplate('outline')">⭕ Outline</button>

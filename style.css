@@ -138,9 +138,10 @@
         .canvas-container {
             flex: 1;
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             justify-content: center;
             padding: 1rem;
+            padding-top: 0;
             background: var(--canvas-bg);
             overflow: auto;
             position: relative;
@@ -462,6 +463,7 @@
 
             .canvas-container {
                 padding: 0.5rem;
+                padding-top: 0;
             }
 
             .sidebar-right {
@@ -571,7 +573,8 @@
                 bottom: 0;
                 left: 0;
                 right: 0;
-                height: 35vh;
+                height: auto;
+                max-height: 85vh;
                 background: var(--secondary-bg);
                 border-radius: 24px 24px 0 0;
                 z-index: 990;

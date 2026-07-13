@@ -3,6 +3,8 @@
         let ctx = canvas.getContext('2d');
         let currentPlatform = 'facebook';
         let bgImage = null;
+        let bgImageX = null;
+        let bgImageY = null;
         let imageAlign = 'center';
         let saveFormat = 'png';
         let textSettings = {
@@ -148,15 +150,18 @@
             // Calculate dimensions
             const imgWidth = bgImage.width * size;
             const imgHeight = bgImage.height * size;
-            let x;
+            let defaultX;
             if (imageAlign === 'left') {
-                x = 0;
+                defaultX = 0;
             } else if (imageAlign === 'right') {
-                x = canvas.width - imgWidth;
+                defaultX = canvas.width - imgWidth;
             } else {
-                x = (canvas.width - imgWidth) / 2;
+                defaultX = (canvas.width - imgWidth) / 2;
             }
-            const y = (canvas.height - imgHeight) / 2;
+            const defaultY = (canvas.height - imgHeight) / 2;
+            
+            const x = bgImageX !== null ? bgImageX : defaultX;
+            const y = bgImageY !== null ? bgImageY : defaultY;
             
             // Draw image
             const imageRotate = document.getElementById('rotate').value || 0;
@@ -536,6 +541,8 @@
         function setAlignment(align) {
             if (adjustTarget === 'image') {
                 imageAlign = align;
+                bgImageX = null;
+                bgImageY = null;
             } else {
                 textSettings.align = align;
                 textSettings.x = null; // Reset x to allow default alignment
@@ -627,6 +634,12 @@
                 document.querySelectorAll('.sidebar-right .control-section').forEach(sec => sec.classList.remove('active'));
                 const targetId = tab.getAttribute('data-tab');
                 document.getElementById(targetId).classList.add('active');
+                
+                // Auto adjust height to fit tools
+                if (window.matchMedia("(max-width: 1023px) and (orientation: portrait)").matches) {
+                    sidebar.style.height = 'auto';
+                    sidebar.style.maxHeight = '85vh';
+                }
             });
         });
 
@@ -639,6 +652,10 @@
                 document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
             } else {
                 sidebar.classList.add('active');
+                if (window.matchMedia("(max-width: 1023px) and (orientation: portrait)").matches) {
+                    sidebar.style.height = 'auto';
+                    sidebar.style.maxHeight = '85vh';
+                }
                 const activeSection = document.querySelector('.sidebar-right .control-section.active');
                 if (activeSection) {
                     const tabId = activeSection.id;
@@ -691,7 +708,7 @@
             }
         });
         
-        // Drag logic for sidebar (drag down to hide, drag up to increase height)
+        // Drag logic for sidebar (drag down to hide)
         let sidebarDragStartY = 0;
         let sidebarCurrentY = 0;
         let isSidebarDragging = false;
@@ -721,9 +738,8 @@
                     if (delta > 0) {
                         sidebarEl.style.transform = `translateY(${delta}px)`;
                     } else {
+                        // Prevent dragging up to increase height
                         sidebarEl.style.transform = `translateY(0)`;
-                        const newHeight = Math.min(window.innerHeight * 0.85, initialSidebarHeight - delta);
-                        sidebarEl.style.height = `${newHeight}px`;
                     }
                 }
             };
@@ -947,15 +963,18 @@
             const size = document.getElementById('imgSize').value / 100;
             const imgWidth = bgImage.width * size;
             const imgHeight = bgImage.height * size;
-            let imgX;
+            let defaultImgX;
             if (imageAlign === 'left') {
-                imgX = 0;
+                defaultImgX = 0;
             } else if (imageAlign === 'right') {
-                imgX = canvas.width - imgWidth;
+                defaultImgX = canvas.width - imgWidth;
             } else {
-                imgX = (canvas.width - imgWidth) / 2;
+                defaultImgX = (canvas.width - imgWidth) / 2;
             }
-            const imgY = (canvas.height - imgHeight) / 2;
+            const defaultImgY = (canvas.height - imgHeight) / 2;
+            
+            const imgX = bgImageX !== null ? bgImageX : defaultImgX;
+            const imgY = bgImageY !== null ? bgImageY : defaultImgY;
             
             const centerX = imgX + imgWidth / 2;
             const centerY = imgY + imgHeight / 2;
@@ -1080,6 +1099,19 @@
             const imgCheck = checkImageBounds(pos.x, pos.y);
             if (imgCheck.inImage) {
                 selectedItem = 'image';
+                isDragging = true;
+                
+                const size = document.getElementById('imgSize').value / 100;
+                const imgWidth = bgImage.width * size;
+                const imgHeight = bgImage.height * size;
+                let defaultImgX = imageAlign === 'left' ? 0 : imageAlign === 'right' ? canvas.width - imgWidth : (canvas.width - imgWidth) / 2;
+                let defaultImgY = (canvas.height - imgHeight) / 2;
+                
+                const currentX = bgImageX !== null ? bgImageX : defaultImgX;
+                const currentY = bgImageY !== null ? bgImageY : defaultImgY;
+                dragOffsetX = pos.x - currentX;
+                dragOffsetY = pos.y - currentY;
+                
                 drawCanvas();
                 return;
             }
@@ -1129,9 +1161,14 @@
                 return;
             }
             
-            if (!isDragging || selectedItem !== 'text') return;
-            textSettings.x = pos.x - dragOffsetX;
-            textSettings.y = pos.y - dragOffsetY;
+            if (!isDragging) return;
+            if (selectedItem === 'text') {
+                textSettings.x = pos.x - dragOffsetX;
+                textSettings.y = pos.y - dragOffsetY;
+            } else if (selectedItem === 'image') {
+                bgImageX = pos.x - dragOffsetX;
+                bgImageY = pos.y - dragOffsetY;
+            }
             drawCanvas();
         }
 
